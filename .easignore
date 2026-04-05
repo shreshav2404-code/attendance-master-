@@ -1,0 +1,22 @@
+# Reduce upload size for EAS builds
+.git
+.github
+.expo
+.idea
+
+# Local dependency/build output
+node_modules
+dist
+artifacts
+android/.gradle
+android/app/build
+ios/build
+
+# Local EAS/build logs and archives
+eas-*.txt
+build-*.tar.gz
+app-release-*.apk
+
+# Local downloaded package tarballs
+react-native-worklets-*.tgz
+
