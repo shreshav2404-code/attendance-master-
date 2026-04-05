@@ -8,6 +8,9 @@
       "developmentClient": true,
       "distribution": "internal",
       "channel": "development",
+      "env": {
+        "NODE_ENV": "development"
+      },
       "android": {
         "buildType": "apk"
       }
@@ -15,6 +18,9 @@
     "preview": {
       "distribution": "internal",
       "channel": "preview",
+      "env": {
+        "NODE_ENV": "production"
+      },
       "android": {
         "buildType": "apk"
       }
@@ -22,6 +28,9 @@
     "production": {
       "channel": "production",
       "autoIncrement": true,
+      "env": {
+        "NODE_ENV": "production"
+      },
       "android": {
         "buildType": "app-bundle"
       }
@@ -29,6 +38,20 @@
     "production-apk": {
       "channel": "production",
       "autoIncrement": true,
+      "env": {
+        "NODE_ENV": "production"
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "production-apk-arm64": {
+      "channel": "production",
+      "autoIncrement": true,
+      "env": {
+        "NODE_ENV": "production",
+        "ORG_GRADLE_PROJECT_reactNativeArchitectures": "arm64-v8a"
+      },
       "android": {
         "buildType": "apk"
       }
