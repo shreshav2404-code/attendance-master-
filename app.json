@@ -2,7 +2,7 @@
   "expo": {
     "name": "Attendex 3.0",
     "slug": "attendx",
-    "version": "3.0.0",
+    "version": "3.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "attendx",
@@ -77,9 +77,9 @@
         "origin": false
       },
       "eas": {
-        "projectId": "883f40cd-e709-475f-8c17-347f2763be8e"
+        "projectId": "5516f209-2e04-4055-9d87-8d354a4a1a77"
       }
     },
-    "owner": "casheww"
+    "owner": "cashewww"
   }
 }
