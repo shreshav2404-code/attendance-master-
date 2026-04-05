@@ -1,74 +1,96 @@
-import { Image, StyleSheet, Platform } from 'react-native';
+import { router } from "expo-router";
+import { ScrollView, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+import { ODStatusScroll } from "@/components/dashboard/ODStatusScroll";
+import { OverallBanner } from "@/components/dashboard/OverallBanner";
+import { QuickStatsRow } from "@/components/dashboard/QuickStatsRow";
+import { SkipCalculator } from "@/components/dashboard/SkipCalculator";
+import { SubjectCard } from "@/components/dashboard/SubjectCard";
+import { TrendChart } from "@/components/dashboard/TrendChart";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { useAttendanceSummary } from "@/hooks/useAttendanceSummary";
+import { useODEvents } from "@/hooks/useODEvents";
+import { useSkipSimulation } from "@/hooks/useSkipSimulation";
+import { useStudent } from "@/hooks/useStudent";
+import { useSubjects } from "@/hooks/useSubjects";
 
-export default function HomeScreen() {
+export default function DashboardScreen() {
+  const { student, lastSyncedAt } = useStudent();
+  const { subjects } = useSubjects();
+  const { odEvents } = useODEvents();
+  const { summaries, overall, trend } = useAttendanceSummary();
+  const simulations = useSkipSimulation();
+
+  if (!student) {
+    return (
+      <SafeAreaView className="flex-1 bg-background">
+        <View className="flex-1 justify-center px-5">
+          <EmptyState
+            title="Profile not ready"
+            description="Complete onboarding once to unlock your dashboard."
+          />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
+    <SafeAreaView className="flex-1 bg-background">
+      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
+        <OverallBanner
+          student={student}
+          overall={overall}
+          lastSyncedAt={lastSyncedAt}
+          onOpenSettings={() => router.push("/(tabs)/settings")}
         />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12'
+
+        <QuickStatsRow overall={overall} />
+
+        <Text className="mb-3 font-inter-bold text-xl text-white">
+          OD status
+        </Text>
+        <ODStatusScroll
+          odEvents={odEvents}
+          onSelect={(id) => router.push(`/od/${id}`)}
+        />
+
+        <Text className="mb-3 mt-5 font-inter-bold text-xl text-white">
+          Subjects
+        </Text>
+        {subjects.length === 0 ? (
+          <EmptyState
+            title="No subjects yet"
+            description="Add subjects in onboarding or from settings to start tracking attendance."
+          />
+        ) : (
+          <View>
+            {subjects.map((subject) => {
+              const summary = summaries.find((item) => item.subjectId === subject.id);
+
+              if (!summary) {
+                return null;
+              }
+
+              return (
+                <SubjectCard
+                  key={subject.id}
+                  subject={subject}
+                  summary={summary}
+                  onPress={() => router.push(`/subject/${subject.id}`)}
+                />
+              );
             })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          Tap the Explore tab to learn more about what's included in this starter app.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          When you're ready, run{' '}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+          </View>
+        )}
+
+        <Text className="mb-3 mt-3 font-inter-bold text-xl text-white">
+          Weekly trend
+        </Text>
+        <TrendChart data={trend} />
+
+        <SkipCalculator simulations={simulations} overall={overall} />
+      </ScrollView>
+    </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
-});

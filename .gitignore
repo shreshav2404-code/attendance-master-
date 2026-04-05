@@ -24,6 +24,12 @@ expo-env.d.ts
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+metro.log
+error.log
+emulator-home.png
+ui.xml
+window_dump.xml
+apk_unzip/
 
 # macOS
 .DS_Store
@@ -34,5 +40,8 @@ yarn-error.*
 
 # typescript
 *.tsbuildinfo
+
+# IDE
+.idea/
 
 app-example

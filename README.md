@@ -1,50 +1,76 @@
-# Welcome to your Expo app 👋
+# AttendX
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+AttendX is a cross-platform Expo + React Native app for college attendance and On-Duty (OD) tracking.
 
-## Get started
+## Stack
 
-1. Install dependencies
+- Expo SDK 52 (managed + prebuild workflow)
+- TypeScript (strict)
+- Expo Router
+- NativeWind + React Native Paper
+- Reanimated + Moti
+- Victory Native
+- Zustand + AsyncStorage + MMKV
 
-   ```bash
-   npm install
-   ```
+## Prerequisites
 
-2. Start the app
+- Node.js 20+
+- npm 10+
+- Android Studio (latest stable)
+- Android SDK + Emulator (API 35 recommended)
+- Java 17
+- For iOS: Xcode 15+ and CocoaPods
 
-   ```bash
-    npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Install
 
 ```bash
-npm run reset-project
+npm install
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Run on Android Emulator
 
-## Learn more
+1. Open Android Studio.
+2. Open `Device Manager` and start an emulator (example: Pixel 8 API 35).
+3. Verify device:
+```bash
+adb devices
+```
+4. Reverse Metro port (important):
+```bash
+adb reverse tcp:8081 tcp:8081
+```
+5. Start Metro:
+```bash
+npx expo start --dev-client --clear
+```
+6. Build/install dev app (first time or after native changes):
+```bash
+npx expo run:android
+```
+7. Open AttendX in emulator and select the available development server.
 
-To learn more about developing your project with Expo, look at the following resources:
+## Run on iOS Simulator
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+```bash
+npx expo run:ios
+```
 
-## Join the community
+## Quality Checks
 
-Join our community of developers creating universal apps.
+```bash
+npm run typecheck
+npm run lint
+npm test -- --runInBand
+```
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## Build Artifacts
+
+```bash
+eas build --platform android
+eas build --platform ios
+```
+
+## Notes
+
+- iOS deployment target is `15.1` (configured via `expo-build-properties` for SDK 52 compatibility).
+- If `expo-doctor` shows a warning about native folders + app config fields, that is expected in prebuild/native workflow unless you move fully to CNG (no committed `android/ios` folders).
