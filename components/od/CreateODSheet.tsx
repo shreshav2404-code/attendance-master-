@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { ScrollView, Text, View } from "react-native";
+import { useMemo, useState } from "react";
+import { ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { Controller, useForm } from "react-hook-form";
 import { Button, HelperText, TextInput } from "react-native-paper";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -62,6 +62,11 @@ export const CreateODSheet = ({
   onClose,
   onCreate,
 }: CreateODSheetProps) => {
+  const { height } = useWindowDimensions();
+  const scrollMaxHeight = useMemo(
+    () => Math.max(360, Math.floor(height * 0.62)),
+    [height],
+  );
   const [selection, setSelection] = useState<Record<string, SelectedODSubjectState>>({});
   const [templateLogs, setTemplateLogs] = useState<DailyLog[]>([]);
   const {
@@ -160,7 +165,14 @@ export const CreateODSheet = ({
 
   return (
     <BottomSheet visible={visible} onClose={onClose} title="Create OD Event">
-      <ScrollView className="max-h-[580px]">
+      <ScrollView
+        style={{ maxHeight: scrollMaxHeight }}
+        contentContainerStyle={{ paddingBottom: 16 }}
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
+        nestedScrollEnabled
+        showsVerticalScrollIndicator={false}
+      >
         <Controller
           control={control}
           name="name"

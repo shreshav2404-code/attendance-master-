@@ -17,7 +17,12 @@ export const ODPicker = ({
   onSelect,
 }: ODPickerProps) => (
   <BottomSheet visible={visible} onClose={onClose} title="Pick OD event">
-    <ScrollView className="max-h-[420px]">
+    <ScrollView
+      style={{ maxHeight: 420 }}
+      nestedScrollEnabled
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+    >
       <View className="gap-3">
         {events.map((event) => (
           <Pressable

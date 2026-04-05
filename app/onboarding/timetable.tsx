@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { Button } from "react-native-paper";
 
@@ -23,6 +23,22 @@ export default function TimetableScreen() {
     subjects[0]?.id ?? null,
   );
   const [draftTimetable, setDraftTimetable] = useState<TimetableSlot[]>(timetable);
+
+  useEffect(() => {
+    if (subjects.length === 0) {
+      setSelectedSubjectId(null);
+      return;
+    }
+
+    setSelectedSubjectId((currentValue) => {
+      if (!currentValue) {
+        return subjects[0]?.id ?? null;
+      }
+
+      const subjectStillExists = subjects.some((subject) => subject.id === currentValue);
+      return subjectStillExists ? currentValue : (subjects[0]?.id ?? null);
+    });
+  }, [subjects]);
 
   const findSlot = (day: WorkingDay, hour: number) =>
     draftTimetable.find((slot) => slot.day === day && slot.hour === hour);
@@ -150,9 +166,9 @@ export default function TimetableScreen() {
       <Text className="mt-6 font-inter-semibold text-sm text-white/70">
         Selected subject
       </Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingVertical: 12 }}>
+      <View className="mt-3 flex-row flex-wrap gap-2">
         <Pressable
-          className="rounded-[24px] border px-4 py-4"
+          className="rounded-[22px] border px-4 py-3"
           style={{
             backgroundColor:
               selectedSubjectId === null
@@ -169,7 +185,7 @@ export default function TimetableScreen() {
           }}
         >
           <Text className="font-inter-semibold text-sm text-white">Free</Text>
-          <Text className="mt-2 font-inter text-xs text-white/65">
+          <Text className="mt-1 font-inter text-xs text-white/65">
             Tap cell to clear
           </Text>
         </Pressable>
@@ -179,7 +195,7 @@ export default function TimetableScreen() {
           return (
             <Pressable
               key={subject.id}
-              className="rounded-[24px] border px-4 py-4"
+              className="rounded-[22px] border px-4 py-3"
               style={{
                 backgroundColor: active
                   ? `${subject.color}25`
@@ -192,13 +208,13 @@ export default function TimetableScreen() {
               }}
             >
               <SubjectBadge code={subject.shortName} color={subject.color} />
-              <Text className="mt-2 font-inter text-sm text-white">
+              <Text className="mt-2 font-inter text-xs text-white">
                 {subject.name}
               </Text>
             </Pressable>
           );
         })}
-      </ScrollView>
+      </View>
 
       <View className="mt-4 gap-3">
         {hourSlots.map((hourSlot) => {
