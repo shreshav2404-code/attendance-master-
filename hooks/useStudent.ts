@@ -4,6 +4,9 @@ export const useStudent = () => {
   const student = useStudentStore((state) => state.student);
   const hourSlots = useStudentStore((state) => state.hourSlots);
   const workingDays = useStudentStore((state) => state.workingDays);
+  const workingDateOverrides = useStudentStore(
+    (state) => state.workingDateOverrides,
+  );
   const onboarded = useStudentStore((state) => state.onboarded);
   const notificationSettings = useStudentStore(
     (state) => state.notificationSettings,
@@ -16,6 +19,7 @@ export const useStudent = () => {
     student,
     hourSlots,
     workingDays,
+    workingDateOverrides,
     onboarded,
     notificationSettings,
     examWeek,
@@ -25,6 +29,12 @@ export const useStudent = () => {
     setStudent: useStudentStore((state) => state.setStudent),
     updateStudent: useStudentStore((state) => state.updateStudent),
     setHourSlots: useStudentStore((state) => state.setHourSlots),
+    setWorkingDateOverride: useStudentStore(
+      (state) => state.setWorkingDateOverride,
+    ),
+    removeWorkingDateOverride: useStudentStore(
+      (state) => state.removeWorkingDateOverride,
+    ),
     setNotificationSettings: useStudentStore(
       (state) => state.setNotificationSettings,
     ),

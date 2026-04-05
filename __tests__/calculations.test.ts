@@ -150,12 +150,50 @@ describe("calculations", () => {
     ).toBe(0);
   });
 
+  it("calculateHoursNeeded uses estimatedFutureTH when provided", () => {
+    expect(
+      calculateHoursNeeded({
+        targetPercentage: 75,
+        TH: 10,
+        AH: 6,
+        DL: 0,
+        pendingOD: 0,
+        estimatedFutureTH: 20,
+      }),
+    ).toBe(36);
+  });
+
+  it("calculateHoursNeeded clamps invalid target percentages", () => {
+    expect(
+      calculateHoursNeeded({
+        targetPercentage: -10,
+        TH: 10,
+        AH: 0,
+        DL: 0,
+        pendingOD: 0,
+      }),
+    ).toBe(0);
+    expect(
+      calculateHoursNeeded({
+        targetPercentage: 120,
+        TH: 10,
+        AH: 7,
+        DL: 0,
+        pendingOD: 0,
+      }),
+    ).toBe(3);
+  });
+
   it("getAttendanceStatus maps projected percentages correctly", () => {
     expect(getAttendanceStatus(68.99)).toBe("danger");
     expect(getAttendanceStatus(74.5)).toBe("warning");
     expect(getAttendanceStatus(75)).toBe("exact");
     expect(getAttendanceStatus(79.5)).toBe("safe");
     expect(getAttendanceStatus(82)).toBe("excellent");
+  });
+
+  it("getAttendanceStatus treats 74.995 as exact after 2-decimal rounding", () => {
+    expect(getAttendanceStatus(74.995)).toBe("exact");
   });
 
   it("calculateAttendanceSummary handles suspended and OD rules", () => {
@@ -173,6 +211,47 @@ describe("calculations", () => {
     expect(summary.percentBefore).toBe(33.33);
     expect(summary.percentAfterDL).toBe(66.67);
     expect(summary.percentProjected).toBe(66.67);
+  });
+
+  it("calculateAttendanceSummary keeps unregistered OD as pending", () => {
+    const pendingOnlySummary = calculateAttendanceSummary({
+      student,
+      subject: subjects[0]!,
+      logs,
+      odEvents: [
+        {
+          ...odEvents[0]!,
+          subjects: [{ ...odEvents[0]!.subjects[0]!, registered: false }],
+        },
+      ],
+    });
+
+    expect(pendingOnlySummary.DL).toBe(0);
+    expect(pendingOnlySummary.pendingOD).toBe(1);
+    expect(pendingOnlySummary.percentAfterDL).toBe(33.33);
+    expect(pendingOnlySummary.percentProjected).toBe(66.67);
+  });
+
+  it("calculateAttendanceSummary handles a subject with zero classes", () => {
+    const summary = calculateAttendanceSummary({
+      student,
+      subject: {
+        id: "new",
+        code: "CAI9999",
+        name: "New Subject",
+        shortName: "NEW",
+        isLab: false,
+        color: "#0891b2",
+      },
+      logs,
+      odEvents,
+    });
+
+    expect(summary.TH).toBe(0);
+    expect(summary.AH).toBe(0);
+    expect(summary.percentBefore).toBe(0);
+    expect(summary.percentAfterDL).toBe(0);
+    expect(summary.percentProjected).toBe(0);
   });
 
   it("calculateAttendanceSummaries builds one summary per subject", () => {
@@ -260,6 +339,33 @@ describe("calculations", () => {
     expect(simulations.find((simulation) => simulation.subjectId === "db")?.hoursToday).toBe(2);
   });
 
+  it("calculateSkipSimulations counts double periods as 2 hours", () => {
+    const summaries = calculateAttendanceSummaries({
+      student,
+      subjects,
+      logs,
+      odEvents,
+    });
+    const slotsToday: TimetableSlot[] = [
+      {
+        id: "double_1",
+        day: "Mon",
+        hour: 1,
+        subjectId: "ml",
+        isDouble: true,
+        isLab: false,
+      },
+    ];
+
+    const simulations = calculateSkipSimulations({
+      summaries,
+      slotsToday,
+      subjects,
+    });
+
+    expect(simulations[0]?.hoursToday).toBe(2);
+  });
+
   it("buildWeeklyTrend returns cumulative trend data", () => {
     const trend = buildWeeklyTrend({
       student,
@@ -270,6 +376,25 @@ describe("calculations", () => {
 
     expect(trend.length).toBeGreaterThan(0);
     expect(trend[trend.length - 1]?.projected).toBe(80);
+  });
+
+  it("buildWeeklyTrend returns a default point when logs are empty", () => {
+    const trend = buildWeeklyTrend({
+      student,
+      subjects,
+      logs: [],
+      odEvents,
+    });
+
+    expect(trend).toEqual([
+      {
+        week: 1,
+        label: "W1",
+        physical: 0,
+        official: 0,
+        projected: 0,
+      },
+    ]);
   });
 
   it("buildODTemplateFromTimetable auto-fills subjects and logs", () => {
@@ -308,10 +433,91 @@ describe("calculations", () => {
     expect(template.logs).toHaveLength(2);
   });
 
+  it("buildODTemplateFromTimetable normalizes reversed date range", () => {
+    const timetable: TimetableSlot[] = [
+      {
+        id: "fri_1",
+        day: "Fri",
+        hour: 1,
+        subjectId: "ml",
+        isDouble: false,
+        isLab: false,
+      },
+    ];
+
+    const template = buildODTemplateFromTimetable({
+      timetable,
+      startDate: "2026-04-05",
+      endDate: "2026-04-03",
+      odEventId: "od-y",
+    });
+
+    expect(template.logs).toHaveLength(1);
+    expect(template.logs[0]?.date).toBe("2026-04-03");
+  });
+
+  it("buildODTemplateFromTimetable respects date working overrides", () => {
+    const timetable: TimetableSlot[] = [
+      {
+        id: "sat_1",
+        day: "Sat",
+        hour: 1,
+        subjectId: "ml",
+        isDouble: false,
+        isLab: false,
+      },
+    ];
+
+    const holidayTemplate = buildODTemplateFromTimetable({
+      timetable,
+      startDate: "2026-04-04",
+      endDate: "2026-04-04",
+      workingDays: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+      workingDateOverrides: { "2026-04-04": false },
+    });
+    const workingTemplate = buildODTemplateFromTimetable({
+      timetable,
+      startDate: "2026-04-04",
+      endDate: "2026-04-04",
+      workingDays: ["Mon", "Tue", "Wed", "Thu", "Fri"],
+      workingDateOverrides: { "2026-04-04": true },
+    });
+
+    expect(holidayTemplate.logs).toHaveLength(0);
+    expect(workingTemplate.logs).toHaveLength(1);
+  });
+
   it("getODPendingEvents returns only past events with pending subjects", () => {
     const pendingEvents = getODPendingEvents(odEvents);
 
     expect(pendingEvents).toHaveLength(1);
     expect(pendingEvents[0]?.id).toBe("od-2");
+  });
+
+  it("getODPendingEvents excludes future and fully registered events", () => {
+    const mixedEvents: ODEvent[] = [
+      ...odEvents,
+      {
+        id: "future-pending",
+        name: "Future",
+        date: "2099-01-01",
+        reason: "Future event",
+        type: "other",
+        createdAt: "2099-01-01T00:00:00.000Z",
+        subjects: [{ subjectId: "ml", hours: 1, registered: false }],
+      },
+      {
+        id: "past-registered",
+        name: "Past registered",
+        date: "2020-01-02",
+        reason: "Done",
+        type: "seminar",
+        createdAt: "2020-01-02T00:00:00.000Z",
+        subjects: [{ subjectId: "ml", hours: 1, registered: true }],
+      },
+    ];
+
+    const pendingEvents = getODPendingEvents(mixedEvents);
+    expect(pendingEvents.map((event) => event.id)).toEqual(["od-2"]);
   });
 });

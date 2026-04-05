@@ -3,8 +3,8 @@ import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";
 import Constants from "expo-constants";
 import { router } from "expo-router";
-import { useEffect, useState } from "react";
-import { Share, ScrollView, Text, View } from "react-native";
+import { useEffect, useMemo, useState } from "react";
+import { Linking, Share, ScrollView, Text, View } from "react-native";
 import { Button, Switch, TextInput } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -16,6 +16,7 @@ import {
   DEFAULT_EXAM_WEEK_SETTINGS,
   DEFAULT_HOUR_SLOTS,
   DEFAULT_NOTIFICATION_SETTINGS,
+  DEFAULT_WORKING_DATE_OVERRIDES,
   DEFAULT_WORKING_DAYS,
 } from "@/lib/constants";
 import { triggerSuccessHaptic, triggerTapHaptic, triggerWarningHaptic } from "@/lib/haptics";
@@ -23,7 +24,7 @@ import { generateAttendancePdf, shareAttendancePdf } from "@/lib/pdf";
 import { shareAttendanceSummary, buildShareSummary } from "@/lib/share";
 import { clearAllStorage, exportBackup, restoreBackup } from "@/lib/storage";
 import { applyOfficialSync } from "@/lib/sync";
-import { generateId, getTodayKey } from "@/lib/utils";
+import { formatDateLabel, generateId, getTodayKey } from "@/lib/utils";
 import { useAttendanceSummary } from "@/hooks/useAttendanceSummary";
 import { useDailyLog } from "@/hooks/useDailyLog";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -41,8 +42,12 @@ export default function SettingsScreen() {
     student,
     examWeek,
     notificationSettings,
+    workingDays,
+    workingDateOverrides,
     updateStudent,
     setExamWeek,
+    setWorkingDateOverride,
+    removeWorkingDateOverride,
     setNotificationSettings,
     setLastSyncedAt,
   } = useStudent();
@@ -53,6 +58,8 @@ export default function SettingsScreen() {
   const { summaries, overall } = useAttendanceSummary();
   const { initializeNotifications } = useNotifications();
   const [toastMessage, setToastMessage] = useState("");
+  const [saturdayDate, setSaturdayDate] = useState(getTodayKey());
+  const [saturdayWorking, setSaturdayWorking] = useState(true);
   const [profile, setProfile] = useState({
     name: student?.name ?? "",
     rollNo: student?.rollNo ?? "",
@@ -62,6 +69,19 @@ export default function SettingsScreen() {
     term: student?.term ?? "",
     targetPercentage: String(student?.targetPercentage ?? 75),
   });
+  const saturdayOverrides = useMemo(
+    () =>
+      Object.entries(workingDateOverrides)
+        .filter(([date]) => {
+          try {
+            return formatDateLabel(date, "EEE") === "Sat";
+          } catch {
+            return false;
+          }
+        })
+        .sort(([left], [right]) => left.localeCompare(right)),
+    [workingDateOverrides],
+  );
 
   useEffect(() => {
     setProfile({
@@ -74,6 +94,17 @@ export default function SettingsScreen() {
       targetPercentage: String(student?.targetPercentage ?? 75),
     });
   }, [student]);
+
+  useEffect(() => {
+    const override = workingDateOverrides[saturdayDate];
+
+    if (override !== undefined) {
+      setSaturdayWorking(override);
+      return;
+    }
+
+    setSaturdayWorking(workingDays.includes("Sat"));
+  }, [saturdayDate, workingDateOverrides, workingDays]);
 
   if (!student) {
     return (
@@ -90,7 +121,12 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView className="flex-1 bg-background">
       <Toast visible={Boolean(toastMessage)} message={toastMessage} />
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
+      <ScrollView
+        nestedScrollEnabled
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
+      >
         <Text className="font-inter-bold text-3xl text-white">Settings</Text>
         <Text className="mt-2 font-inter text-base leading-7 text-white/65">
           Manage profile, sync official numbers, configure notifications, and
@@ -151,10 +187,16 @@ export default function SettingsScreen() {
             Need to change subjects, hour timings, or the weekly grid?
           </Text>
           <View className="mt-4 flex-row gap-3">
-            <Button mode="outlined" onPress={() => router.push("/onboarding/subjects")}>
+            <Button
+              mode="outlined"
+              onPress={() => router.push("/onboarding/subjects?mode=edit")}
+            >
               Edit subjects
             </Button>
-            <Button mode="outlined" onPress={() => router.push("/onboarding/timetable")}>
+            <Button
+              mode="outlined"
+              onPress={() => router.push("/onboarding/timetable?mode=edit")}
+            >
               Edit timetable
             </Button>
           </View>
@@ -203,6 +245,8 @@ export default function SettingsScreen() {
                     startDate: nextValue.startDate,
                     endDate: nextValue.endDate,
                     note: "Exam week suspension",
+                    workingDays,
+                    workingDateOverrides,
                   });
                   const existingKeys = new Set(
                     dailyLogs.map(
@@ -233,6 +277,119 @@ export default function SettingsScreen() {
               }}
             />
           </View>
+        </View>
+
+        <View className="mt-6 rounded-[28px] border border-white/10 bg-white/5 p-4">
+          <Text className="font-inter-bold text-lg text-white">
+            Flexible Saturday
+          </Text>
+          <Text className="mt-2 font-inter text-sm leading-6 text-white/60">
+            Override individual Saturdays as working day or holiday, without changing the full timetable.
+          </Text>
+          <TextInput
+            mode="outlined"
+            label="Saturday date (YYYY-MM-DD)"
+            value={saturdayDate}
+            onChangeText={setSaturdayDate}
+            style={{ marginTop: 14, backgroundColor: "transparent" }}
+          />
+          <View className="mt-4 flex-row items-center justify-between">
+            <Text className="font-inter text-sm text-white/70">
+              Mark as working day
+            </Text>
+            <Switch
+              value={saturdayWorking}
+              onValueChange={(value) => {
+                void triggerTapHaptic();
+                setSaturdayWorking(value);
+              }}
+            />
+          </View>
+          <View className="mt-4 flex-row gap-3">
+            <Button
+              mode="contained-tonal"
+              onPress={async () => {
+                await triggerTapHaptic();
+
+                if (!/^\d{4}-\d{2}-\d{2}$/.test(saturdayDate)) {
+                  setToastMessage("Enter date as YYYY-MM-DD");
+                  await triggerWarningHaptic();
+                  setTimeout(() => setToastMessage(""), 1800);
+                  return;
+                }
+
+                let dayLabel = "";
+                try {
+                  dayLabel = formatDateLabel(saturdayDate, "EEE");
+                } catch {
+                  setToastMessage("Invalid date");
+                  await triggerWarningHaptic();
+                  setTimeout(() => setToastMessage(""), 1800);
+                  return;
+                }
+
+                if (dayLabel !== "Sat") {
+                  setToastMessage("Pick a Saturday date");
+                  await triggerWarningHaptic();
+                  setTimeout(() => setToastMessage(""), 1800);
+                  return;
+                }
+
+                await setWorkingDateOverride(saturdayDate, saturdayWorking);
+                setToastMessage(
+                  saturdayWorking
+                    ? "Saturday marked as working"
+                    : "Saturday marked as holiday",
+                );
+                await triggerSuccessHaptic();
+                setTimeout(() => setToastMessage(""), 1800);
+              }}
+            >
+              Save Saturday override
+            </Button>
+            <Button
+              mode="outlined"
+              disabled={workingDateOverrides[saturdayDate] === undefined}
+              onPress={async () => {
+                await triggerTapHaptic();
+                await removeWorkingDateOverride(saturdayDate);
+                setToastMessage("Saturday override removed");
+                await triggerSuccessHaptic();
+                setTimeout(() => setToastMessage(""), 1800);
+              }}
+            >
+              Reset date
+            </Button>
+          </View>
+
+          {saturdayOverrides.length === 0 ? (
+            <Text className="mt-4 font-inter text-sm text-white/45">
+              No Saturday overrides yet.
+            </Text>
+          ) : (
+            <View className="mt-4 gap-2">
+              {saturdayOverrides.map(([date, isWorking]) => (
+                <View
+                  key={date}
+                  className="flex-row items-center justify-between rounded-xl border border-white/10 bg-black/20 px-3 py-2"
+                >
+                  <Text className="font-inter text-sm text-white/80">
+                    {date} · {isWorking ? "Working" : "Holiday"}
+                  </Text>
+                  <Button
+                    compact
+                    mode="text"
+                    onPress={async () => {
+                      await triggerTapHaptic();
+                      await removeWorkingDateOverride(date);
+                    }}
+                  >
+                    Remove
+                  </Button>
+                </View>
+              ))}
+            </View>
+          )}
         </View>
 
         <View className="mt-6 rounded-[28px] border border-white/10 bg-white/5 p-4">
@@ -357,6 +514,9 @@ export default function SettingsScreen() {
                   student: backup.studentBundle.student,
                   hourSlots: backup.hourSlotBundle.hourSlots,
                   workingDays: backup.hourSlotBundle.workingDays,
+                  workingDateOverrides:
+                    backup.hourSlotBundle.workingDateOverrides ??
+                    DEFAULT_WORKING_DATE_OVERRIDES,
                   notificationSettings: backup.studentBundle.notificationSettings,
                   examWeek: backup.studentBundle.examWeek,
                   lastSyncedAt: backup.studentBundle.lastSyncedAt,
@@ -433,6 +593,7 @@ export default function SettingsScreen() {
                   student: null,
                   hourSlots: DEFAULT_HOUR_SLOTS,
                   workingDays: DEFAULT_WORKING_DAYS,
+                  workingDateOverrides: DEFAULT_WORKING_DATE_OVERRIDES,
                   notificationSettings: DEFAULT_NOTIFICATION_SETTINGS,
                   examWeek: DEFAULT_EXAM_WEEK_SETTINGS,
                   lastSyncedAt: undefined,
@@ -464,6 +625,19 @@ export default function SettingsScreen() {
           <Text className="font-inter-bold text-lg text-white">About</Text>
           <Text className="mt-3 font-inter text-sm text-white/65">
             Version {Constants.expoConfig?.version ?? "1.0.0"} · Built with AttendX
+          </Text>
+          <Text className="mt-2 font-inter text-sm text-white/65">
+            Made with love{" "}
+            <Text
+              className="font-inter-semibold"
+              style={{ color: "#60a5fa" }}
+              onPress={async () => {
+                await triggerTapHaptic();
+                await Linking.openURL("https://instagram.com/the_jha_keshav2404");
+              }}
+            >
+              keshav jha
+            </Text>
           </Text>
           <Button
             mode="outlined"

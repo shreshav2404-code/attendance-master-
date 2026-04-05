@@ -5,6 +5,7 @@ import {
   DEFAULT_EXAM_WEEK_SETTINGS,
   DEFAULT_HOUR_SLOTS,
   DEFAULT_NOTIFICATION_SETTINGS,
+  DEFAULT_WORKING_DATE_OVERRIDES,
   DEFAULT_WORKING_DAYS,
   STORAGE_KEYS,
 } from "@/lib/constants";
@@ -43,6 +44,7 @@ const defaultStudentBundle: StudentBundle = {
 const defaultHourSlotBundle: HourSlotBundle = {
   hourSlots: DEFAULT_HOUR_SLOTS,
   workingDays: DEFAULT_WORKING_DAYS,
+  workingDateOverrides: DEFAULT_WORKING_DATE_OVERRIDES,
 };
 
 const readMMKV = (key: string): string | null => {
@@ -97,8 +99,19 @@ export const loadSubjects = async (): Promise<Subject[]> =>
 export const saveSubjects = async (subjects: Subject[]): Promise<void> =>
   writeJson(STORAGE_KEYS.subjects, subjects);
 
-export const loadHourSlotBundle = async (): Promise<HourSlotBundle> =>
-  readJson<HourSlotBundle>(STORAGE_KEYS.hourSlots, defaultHourSlotBundle);
+export const loadHourSlotBundle = async (): Promise<HourSlotBundle> => {
+  const hourSlotBundle = await readJson<HourSlotBundle>(
+    STORAGE_KEYS.hourSlots,
+    defaultHourSlotBundle,
+  );
+
+  return {
+    hourSlots: hourSlotBundle.hourSlots ?? DEFAULT_HOUR_SLOTS,
+    workingDays: hourSlotBundle.workingDays ?? DEFAULT_WORKING_DAYS,
+    workingDateOverrides:
+      hourSlotBundle.workingDateOverrides ?? DEFAULT_WORKING_DATE_OVERRIDES,
+  };
+};
 
 export const saveHourSlotBundle = async (
   hourSlotBundle: HourSlotBundle,

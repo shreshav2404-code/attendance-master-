@@ -89,4 +89,34 @@ describe("sync", () => {
       ]),
     );
   });
+
+  it("applyOfficialSync does not register OD hours for future events", () => {
+    const futureEvents: ODEvent[] = [
+      {
+        id: "od-future",
+        name: "Future HackX",
+        date: "2099-01-01",
+        reason: "Future event",
+        type: "hackathon",
+        createdAt: "2099-01-01T00:00:00.000Z",
+        subjects: [
+          {
+            subjectId: "ml",
+            hours: 2,
+            registered: false,
+          },
+        ],
+      },
+    ];
+
+    const result = applyOfficialSync({
+      officialInputs,
+      summaries,
+      odEvents: futureEvents,
+      syncedAt: "2026-04-05T00:00:00.000Z",
+    });
+
+    expect(result.reports[0]?.newlyRegisteredOD).toBe(1);
+    expect(result.odEvents[0]?.subjects[0]?.registered).toBe(false);
+  });
 });

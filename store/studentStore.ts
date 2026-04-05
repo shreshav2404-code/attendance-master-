@@ -4,6 +4,7 @@ import {
   DEFAULT_EXAM_WEEK_SETTINGS,
   DEFAULT_HOUR_SLOTS,
   DEFAULT_NOTIFICATION_SETTINGS,
+  DEFAULT_WORKING_DATE_OVERRIDES,
   DEFAULT_WORKING_DAYS,
 } from "@/lib/constants";
 import {
@@ -20,6 +21,7 @@ import type {
   NotificationSettings,
   Student,
   StudentBundle,
+  WorkingDateOverrides,
   WorkingDay,
 } from "@/types";
 
@@ -29,6 +31,7 @@ interface StudentStoreState {
   student: Student | null;
   hourSlots: HourSlot[];
   workingDays: WorkingDay[];
+  workingDateOverrides: WorkingDateOverrides;
   onboarded: boolean;
   notificationSettings: NotificationSettings;
   examWeek: ExamWeekSettings;
@@ -37,6 +40,11 @@ interface StudentStoreState {
   setStudent: (student: Student | null) => Promise<void>;
   updateStudent: (updates: Partial<Student>) => Promise<void>;
   setHourSlots: (hourSlots: HourSlot[], workingDays: WorkingDay[]) => Promise<void>;
+  setWorkingDateOverride: (
+    date: string,
+    isWorking: boolean,
+  ) => Promise<void>;
+  removeWorkingDateOverride: (date: string) => Promise<void>;
   setNotificationSettings: (
     notificationSettings: NotificationSettings,
   ) => Promise<void>;
@@ -63,6 +71,7 @@ export const useStudentStore = create<StudentStoreState>((set, get) => ({
   student: null,
   hourSlots: DEFAULT_HOUR_SLOTS,
   workingDays: DEFAULT_WORKING_DAYS,
+  workingDateOverrides: DEFAULT_WORKING_DATE_OVERRIDES,
   onboarded: false,
   notificationSettings: DEFAULT_NOTIFICATION_SETTINGS,
   examWeek: DEFAULT_EXAM_WEEK_SETTINGS,
@@ -85,6 +94,7 @@ export const useStudentStore = create<StudentStoreState>((set, get) => ({
       student: studentBundle.student,
       hourSlots: hourSlotBundle.hourSlots,
       workingDays: hourSlotBundle.workingDays,
+      workingDateOverrides: hourSlotBundle.workingDateOverrides,
       onboarded,
       notificationSettings: studentBundle.notificationSettings,
       examWeek: studentBundle.examWeek,
@@ -112,7 +122,38 @@ export const useStudentStore = create<StudentStoreState>((set, get) => ({
   },
   setHourSlots: async (hourSlots, workingDays) => {
     set({ hourSlots, workingDays });
-    await saveHourSlotBundle({ hourSlots, workingDays });
+    await saveHourSlotBundle({
+      hourSlots,
+      workingDays,
+      workingDateOverrides: get().workingDateOverrides,
+    });
+  },
+  setWorkingDateOverride: async (date, isWorking) => {
+    const nextOverrides = {
+      ...get().workingDateOverrides,
+      [date]: isWorking,
+    };
+
+    set({ workingDateOverrides: nextOverrides });
+    await saveHourSlotBundle({
+      hourSlots: get().hourSlots,
+      workingDays: get().workingDays,
+      workingDateOverrides: nextOverrides,
+    });
+  },
+  removeWorkingDateOverride: async (date) => {
+    const nextOverrides = Object.fromEntries(
+      Object.entries(get().workingDateOverrides).filter(
+        ([overrideDate]) => overrideDate !== date,
+      ),
+    );
+
+    set({ workingDateOverrides: nextOverrides });
+    await saveHourSlotBundle({
+      hourSlots: get().hourSlots,
+      workingDays: get().workingDays,
+      workingDateOverrides: nextOverrides,
+    });
   },
   setNotificationSettings: async (notificationSettings) => {
     set({ notificationSettings });

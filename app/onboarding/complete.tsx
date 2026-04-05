@@ -1,4 +1,4 @@
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { Sparkles } from "lucide-react-native";
 import { View, Text } from "react-native";
 import { Button } from "react-native-paper";
@@ -12,9 +12,12 @@ import { useSubjects } from "@/hooks/useSubjects";
 import { useTimetable } from "@/hooks/useTimetable";
 
 export default function CompleteScreen() {
+  const params = useLocalSearchParams<{ mode?: string | string[] }>();
   const { student, setOnboarded } = useStudent();
   const { subjects } = useSubjects();
   const { timetable } = useTimetable();
+  const mode = Array.isArray(params.mode) ? params.mode[0] : params.mode;
+  const isEditMode = mode === "edit";
 
   return (
     <SafeAreaView className="flex-1 bg-background">
@@ -55,12 +58,14 @@ export default function CompleteScreen() {
           contentStyle={{ paddingVertical: 8 }}
           onPress={async () => {
             await triggerTapHaptic();
-            await setOnboarded(true);
+            if (!isEditMode) {
+              await setOnboarded(true);
+            }
             await triggerSuccessHaptic();
-            router.replace("/(tabs)");
+            router.replace(isEditMode ? "/(tabs)/settings" : "/(tabs)");
           }}
         >
-          Go to Dashboard
+          {isEditMode ? "Back to Settings" : "Go to Dashboard"}
         </Button>
       </View>
     </SafeAreaView>

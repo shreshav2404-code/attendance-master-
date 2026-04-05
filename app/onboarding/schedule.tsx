@@ -29,11 +29,17 @@ export default function ScheduleScreen() {
 
   const toggleWorkingDay = (day: WorkingDay) => {
     void triggerTapHaptic();
-    setSelectedWorkingDays((currentValue) =>
-      currentValue.includes(day)
-        ? currentValue.filter((item) => item !== day)
-        : [...currentValue, day],
-    );
+    setSelectedWorkingDays((currentValue) => {
+      if (currentValue.includes(day)) {
+        if (currentValue.length === 1) {
+          return currentValue;
+        }
+
+        return currentValue.filter((item) => item !== day);
+      }
+
+      return [...currentValue, day];
+    });
   };
 
   return (

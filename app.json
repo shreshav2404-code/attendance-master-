@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "AttendX",
+    "name": "Attendex 2.0",
     "slug": "attendx",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "attendx",
@@ -71,6 +71,15 @@
     },
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "883f40cd-e709-475f-8c17-347f2763be8e"
+      }
+    },
+    "owner": "casheww"
   }
 }

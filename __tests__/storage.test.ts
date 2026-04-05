@@ -1,11 +1,13 @@
 import {
   clearAllStorage,
   exportBackup,
+  loadHourSlotBundle,
   loadDailyLogs,
   loadOnboarded,
   loadStudentBundle,
   loadSubjects,
   restoreBackup,
+  saveHourSlotBundle,
   saveDailyLogs,
   saveOnboarded,
   saveStudentBundle,
@@ -88,5 +90,20 @@ describe("storage", () => {
 
     expect(await loadOnboarded()).toBe(false);
     expect(await loadSubjects()).toEqual([]);
+  });
+
+  it("persists working date overrides in hour slot bundle", async () => {
+    await saveHourSlotBundle({
+      hourSlots: [
+        { hour: 1, startTime: "09:00", endTime: "10:00", isBreak: false, isLunch: false },
+      ],
+      workingDays: ["Mon", "Tue", "Wed", "Thu", "Fri"],
+      workingDateOverrides: {
+        "2026-04-04": true,
+      },
+    });
+
+    const hourSlotBundle = await loadHourSlotBundle();
+    expect(hourSlotBundle.workingDateOverrides["2026-04-04"]).toBe(true);
   });
 });

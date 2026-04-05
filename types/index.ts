@@ -1,4 +1,5 @@
 export type WorkingDay = "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat";
+export type WorkingDateOverrides = Record<string, boolean>;
 
 export type AttendanceStatus = "present" | "absent" | "suspended" | "od";
 
@@ -131,6 +132,7 @@ export interface StudentBundle {
 export interface HourSlotBundle {
   hourSlots: HourSlot[];
   workingDays: WorkingDay[];
+  workingDateOverrides: WorkingDateOverrides;
 }
 
 export interface OverallAttendanceMetrics {

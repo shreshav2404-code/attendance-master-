@@ -6,7 +6,12 @@ import {
   startOfWeek,
 } from "date-fns";
 
-import { getTodayKey, getWorkingDayForDate, roundToTwo } from "@/lib/utils";
+import {
+  getTodayKey,
+  getWorkingDayForDate,
+  isDateWorking,
+  roundToTwo,
+} from "@/lib/utils";
 import type {
   AttendanceSummary,
   DailyLog,
@@ -18,6 +23,8 @@ import type {
   Subject,
   TimetableSlot,
   TrendPoint,
+  WorkingDateOverrides,
+  WorkingDay,
 } from "@/types";
 
 export const resolveClassHours = (
@@ -320,12 +327,16 @@ export const buildODTemplateFromTimetable = ({
   endDate,
   odEventId,
   note,
+  workingDays,
+  workingDateOverrides,
 }: {
   timetable: TimetableSlot[];
   startDate: string;
   endDate: string;
   odEventId?: string;
   note?: string;
+  workingDays?: WorkingDay[];
+  workingDateOverrides?: WorkingDateOverrides;
 }): ODTemplateResult => {
   const normalizedStart = startDate <= endDate ? startDate : endDate;
   const normalizedEnd = startDate <= endDate ? endDate : startDate;
@@ -338,6 +349,18 @@ export const buildODTemplateFromTimetable = ({
     end: parseISO(normalizedEnd),
   }).forEach((date) => {
     const dateKey = format(date, "yyyy-MM-dd");
+
+    if (
+      workingDays &&
+      !isDateWorking({
+        date: dateKey,
+        workingDays,
+        workingDateOverrides: workingDateOverrides ?? {},
+      })
+    ) {
+      return;
+    }
+
     const workingDay = getWorkingDayForDate(dateKey);
     const slotsForDay = timetable.filter((slot) => slot.day === workingDay);
 

@@ -1,4 +1,4 @@
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { Trash2 } from "lucide-react-native";
 import { useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
@@ -25,7 +25,10 @@ type SubjectFormValues = z.infer<typeof subjectSchema>;
 const defaultSubjectColor = SUBJECT_COLOR_PALETTE[0]!;
 
 export default function SubjectsScreen() {
+  const params = useLocalSearchParams<{ mode?: string | string[] }>();
   const { subjects, addSubject, removeSubject } = useSubjects();
+  const mode = Array.isArray(params.mode) ? params.mode[0] : params.mode;
+  const isEditMode = mode === "edit";
   const {
     control,
     handleSubmit,
@@ -222,7 +225,11 @@ export default function SubjectsScreen() {
         contentStyle={{ paddingVertical: 8 }}
         onPress={async () => {
           await triggerTapHaptic();
-          router.push("/onboarding/timetable");
+          router.push(
+            isEditMode
+              ? "/onboarding/timetable?mode=edit"
+              : "/onboarding/timetable",
+          );
         }}
       >
         Continue to timetable

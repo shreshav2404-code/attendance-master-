@@ -44,7 +44,15 @@ export const SyncReportForm = ({
       <Text className="font-inter-bold text-lg text-white">
         Sync with official report
       </Text>
-      <ScrollView className="mt-4 max-h-[420px]">
+      <ScrollView
+        className="mt-4"
+        style={{ maxHeight: 420 }}
+        contentContainerStyle={{ paddingBottom: 8 }}
+        keyboardDismissMode="on-drag"
+        nestedScrollEnabled
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         <View className="gap-4">
           {subjects.map((subject) => {
             const currentRow = rows[subject.id];

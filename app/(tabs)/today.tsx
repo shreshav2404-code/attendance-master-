@@ -1,11 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { RefreshControl, ScrollView, Text, View } from "react-native";
 import { Button } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { resolveClassHours } from "@/lib/calculations";
 import { triggerSuccessHaptic, triggerTapHaptic, triggerWarningHaptic } from "@/lib/haptics";
-import { formatDateLabel, getTodayKey } from "@/lib/utils";
+import {
+  formatDateLabel,
+  getTodayKey,
+  getWorkingDayForDate,
+  isDateWorking,
+} from "@/lib/utils";
 import { useDailyLog } from "@/hooks/useDailyLog";
 import { useODEvents } from "@/hooks/useODEvents";
 import { useStudent } from "@/hooks/useStudent";
@@ -19,9 +24,9 @@ import type { AttendanceStatus, ODEvent } from "@/types";
 
 export default function TodayScreen() {
   const todayKey = getTodayKey();
-  const { hourSlots, examWeek } = useStudent();
+  const { hourSlots, examWeek, workingDays, workingDateOverrides } = useStudent();
   const { subjects } = useSubjects();
-  const { getSlotsForDate } = useTimetable();
+  const { timetable } = useTimetable();
   const { logsForDate, setLogsForDate } = useDailyLog(todayKey);
   const { odEvents } = useODEvents();
   const [statusBySlot, setStatusBySlot] = useState<Record<string, AttendanceStatus>>({});
@@ -31,10 +36,30 @@ export default function TodayScreen() {
   const [toastVisible, setToastVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  const todaySlots = getSlotsForDate(todayKey).filter((slot) =>
-    subjects.some((subject) => subject.id === slot.subjectId),
+  const isTodayWorkingDay = useMemo(
+    () =>
+      isDateWorking({
+        date: todayKey,
+        workingDays,
+        workingDateOverrides,
+      }),
+    [todayKey, workingDateOverrides, workingDays],
   );
-  const hourSlotMap = new Map(hourSlots.map((slot) => [slot.hour, slot]));
+  const todayWorkingDay = useMemo(() => getWorkingDayForDate(todayKey), [todayKey]);
+  const todaySlots = useMemo(
+    () =>
+      isTodayWorkingDay
+        ? timetable
+            .filter((slot) => slot.day === todayWorkingDay)
+            .sort((left, right) => left.hour - right.hour)
+            .filter((slot) => subjects.some((subject) => subject.id === slot.subjectId))
+        : [],
+    [isTodayWorkingDay, subjects, timetable, todayWorkingDay],
+  );
+  const hourSlotMap = useMemo(
+    () => new Map(hourSlots.map((slot) => [slot.hour, slot])),
+    [hourSlots],
+  );
   const readOnly = logsForDate.length > 0 && !editMode;
 
   useEffect(() => {

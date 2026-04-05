@@ -1,11 +1,17 @@
+import { useMemo } from "react";
+
 import { useAttendanceStore } from "@/store/attendanceStore";
 
 export const useDailyLog = (date?: string) => {
   const dailyLogs = useAttendanceStore((state) => state.dailyLogs);
+  const logsForDate = useMemo(
+    () => (date ? dailyLogs.filter((log) => log.date === date) : dailyLogs),
+    [dailyLogs, date],
+  );
 
   return {
     dailyLogs,
-    logsForDate: date ? dailyLogs.filter((log) => log.date === date) : dailyLogs,
+    logsForDate,
     hydrated: useAttendanceStore((state) => state.hydrated),
     hydrate: useAttendanceStore((state) => state.hydrate),
     setDailyLogs: useAttendanceStore((state) => state.setDailyLogs),

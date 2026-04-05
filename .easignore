@@ -11,12 +11,15 @@ artifacts
 android/.gradle
 android/app/build
 ios/build
+.gradle-local
 
 # Local EAS/build logs and archives
 eas-*.txt
 build-*.tar.gz
 app-release-*.apk
+expo-dev.log
+ui-*.xml
+screen-*.png
 
 # Local downloaded package tarballs
 react-native-worklets-*.tgz
-

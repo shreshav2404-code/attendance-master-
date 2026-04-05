@@ -1,6 +1,12 @@
 import { format, isWithinInterval, parseISO } from "date-fns";
 
-import type { DailyLog, HourSlot, TimetableSlot, WorkingDay } from "@/types";
+import type {
+  DailyLog,
+  HourSlot,
+  TimetableSlot,
+  WorkingDateOverrides,
+  WorkingDay,
+} from "@/types";
 
 export const roundToTwo = (value: number): number =>
   Number.isFinite(value) ? Number(value.toFixed(2)) : 0;
@@ -21,6 +27,25 @@ export const getTodayKey = (): string => format(new Date(), "yyyy-MM-dd");
 export const getWorkingDayForDate = (date: string): WorkingDay => {
   const weekday = format(parseISO(date), "EEE");
   return weekday.slice(0, 3) as WorkingDay;
+};
+
+export const isDateWorking = ({
+  date,
+  workingDays,
+  workingDateOverrides,
+}: {
+  date: string;
+  workingDays: WorkingDay[];
+  workingDateOverrides: WorkingDateOverrides;
+}): boolean => {
+  const overriddenValue = workingDateOverrides[date];
+
+  if (overriddenValue !== undefined) {
+    return overriddenValue;
+  }
+
+  const weekday = format(parseISO(date), "EEE").slice(0, 3);
+  return workingDays.includes(weekday as WorkingDay);
 };
 
 export const isDateInRange = (

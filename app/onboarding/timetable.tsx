@@ -1,4 +1,4 @@
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { Button } from "react-native-paper";
@@ -12,9 +12,12 @@ import { useTimetable } from "@/hooks/useTimetable";
 import type { TimetableSlot, WorkingDay } from "@/types";
 
 export default function TimetableScreen() {
+  const params = useLocalSearchParams<{ mode?: string | string[] }>();
   const { hourSlots, workingDays } = useStudent();
   const { subjects } = useSubjects();
   const { timetable, setTimetable } = useTimetable();
+  const mode = Array.isArray(params.mode) ? params.mode[0] : params.mode;
+  const isEditMode = mode === "edit";
   const [selectedDay, setSelectedDay] = useState<WorkingDay>(workingDays[0] ?? "Mon");
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(
     subjects[0]?.id ?? null,
@@ -31,8 +34,16 @@ export default function TimetableScreen() {
 
   const updateSlot = (day: WorkingDay, hour: number) => {
     void triggerTapHaptic();
+    const existingSlot = findSlot(day, hour);
 
     if (!selectedSubjectId) {
+      setDraftTimetable((currentValue) =>
+        currentValue.filter((slot) => !(slot.day === day && slot.hour === hour)),
+      );
+      return;
+    }
+
+    if (existingSlot?.subjectId === selectedSubjectId) {
       setDraftTimetable((currentValue) =>
         currentValue.filter((slot) => !(slot.day === day && slot.hour === hour)),
       );
@@ -51,7 +62,9 @@ export default function TimetableScreen() {
 
     setDraftTimetable((currentValue) => {
       const filteredSlots = currentValue.filter(
-        (slot) => !(slot.day === day && slot.hour === hour),
+        (slot) =>
+          !(slot.day === day && slot.hour === hour) &&
+          !(subject.isLab && slot.day === day && slot.hour === hour + 1),
       );
 
       return [
@@ -138,6 +151,28 @@ export default function TimetableScreen() {
         Selected subject
       </Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingVertical: 12 }}>
+        <Pressable
+          className="rounded-[24px] border px-4 py-4"
+          style={{
+            backgroundColor:
+              selectedSubjectId === null
+                ? "rgba(15,45,85,0.22)"
+                : "rgba(255,255,255,0.04)",
+            borderColor:
+              selectedSubjectId === null
+                ? "rgba(26,95,168,0.55)"
+                : "rgba(255,255,255,0.08)",
+          }}
+          onPress={() => {
+            void triggerTapHaptic();
+            setSelectedSubjectId(null);
+          }}
+        >
+          <Text className="font-inter-semibold text-sm text-white">Free</Text>
+          <Text className="mt-2 font-inter text-xs text-white/65">
+            Tap cell to clear
+          </Text>
+        </Pressable>
         {subjects.map((subject) => {
           const active = selectedSubjectId === subject.id;
 
@@ -204,7 +239,7 @@ export default function TimetableScreen() {
                     ? "Lab auto-spans 2 hours"
                     : slot.isDouble
                       ? "Double period enabled"
-                      : "Tap to reassign · Long press for double"}
+                      : "Tap to reassign/clear · Long press for double"}
                 </Text>
               ) : (
                 <Text className="mt-1 font-inter text-sm text-white/45">
@@ -224,7 +259,9 @@ export default function TimetableScreen() {
           await triggerTapHaptic();
           await setTimetable(draftTimetable);
           await triggerSuccessHaptic();
-          router.push("/onboarding/complete");
+          router.push(
+            isEditMode ? "/onboarding/complete?mode=edit" : "/onboarding/complete",
+          );
         }}
       >
         Review setup

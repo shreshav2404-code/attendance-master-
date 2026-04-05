@@ -7,7 +7,12 @@ import {
   Inter_700Bold,
   useFonts,
 } from "@expo-google-fonts/inter";
-import { Stack, useRouter, useSegments } from "expo-router";
+import {
+  Stack,
+  useGlobalSearchParams,
+  useRouter,
+  useSegments,
+} from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useRef } from "react";
 import { View } from "react-native";
@@ -56,6 +61,9 @@ export default function RootLayout() {
   });
   const router = useRouter();
   const segments = useSegments();
+  const searchParams = useGlobalSearchParams<{
+    mode?: string | string[];
+  }>();
   const hydrateStudent = useStudentStore((state) => state.hydrate);
   const hydrateSubjects = useSubjectStore((state) => state.hydrate);
   const hydrateAttendance = useAttendanceStore((state) => state.hydrate);
@@ -104,16 +112,20 @@ export default function RootLayout() {
     }
 
     const inOnboarding = segments[0] === "onboarding";
+    const onboardingMode = Array.isArray(searchParams.mode)
+      ? searchParams.mode[0]
+      : searchParams.mode;
+    const isOnboardingEditMode = onboardingMode === "edit";
 
     if (!onboarded && !inOnboarding) {
       router.replace("/onboarding/welcome");
       return;
     }
 
-    if (onboarded && inOnboarding) {
+    if (onboarded && inOnboarding && !isOnboardingEditMode) {
       router.replace("/(tabs)");
     }
-  }, [onboarded, ready, router, segments]);
+  }, [onboarded, ready, router, searchParams.mode, segments]);
 
   useEffect(() => {
     if (!ready) {

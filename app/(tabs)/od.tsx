@@ -11,12 +11,14 @@ import { Toast } from "@/components/shared/Toast";
 import { triggerSuccessHaptic, triggerTapHaptic, triggerWarningHaptic } from "@/lib/haptics";
 import { useDailyLog } from "@/hooks/useDailyLog";
 import { useODEvents } from "@/hooks/useODEvents";
+import { useStudent } from "@/hooks/useStudent";
 import { useSubjects } from "@/hooks/useSubjects";
 import { useTimetable } from "@/hooks/useTimetable";
 
 export default function ODTabScreen() {
   const { subjects } = useSubjects();
   const { timetable } = useTimetable();
+  const { workingDays, workingDateOverrides } = useStudent();
   const {
     odEvents,
     addODEvent,
@@ -53,6 +55,8 @@ export default function ODTabScreen() {
         visible={sheetVisible}
         subjects={subjects}
         timetable={timetable}
+        workingDays={workingDays}
+        workingDateOverrides={workingDateOverrides}
         onClose={() => setSheetVisible(false)}
         onCreate={async (odEvent, logs) => {
           await triggerTapHaptic();

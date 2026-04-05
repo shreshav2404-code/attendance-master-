@@ -2,6 +2,7 @@ import type {
   ExamWeekSettings,
   HourSlot,
   NotificationSettings,
+  WorkingDateOverrides,
   WorkingDay,
 } from "@/types";
 
@@ -44,6 +45,7 @@ export const WORKING_DAYS: WorkingDay[] = [
 ];
 
 export const DEFAULT_WORKING_DAYS: WorkingDay[] = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+export const DEFAULT_WORKING_DATE_OVERRIDES: WorkingDateOverrides = {};
 
 export const SUBJECT_COLOR_PALETTE = [
   "#1a5fa8",

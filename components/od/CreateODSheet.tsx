@@ -14,7 +14,15 @@ import { BottomSheet } from "@/components/shared/BottomSheet";
 import { buildODTemplateFromTimetable } from "@/lib/calculations";
 import { triggerSuccessHaptic, triggerTapHaptic } from "@/lib/haptics";
 import { generateId } from "@/lib/utils";
-import type { DailyLog, ODEvent, ODEventType, Subject, TimetableSlot } from "@/types";
+import type {
+  DailyLog,
+  ODEvent,
+  ODEventType,
+  Subject,
+  TimetableSlot,
+  WorkingDateOverrides,
+  WorkingDay,
+} from "@/types";
 
 const odSchema = z.object({
   name: z.string().min(3, "Event name is required"),
@@ -39,6 +47,8 @@ interface CreateODSheetProps {
   visible: boolean;
   subjects: Subject[];
   timetable: TimetableSlot[];
+  workingDays: WorkingDay[];
+  workingDateOverrides: WorkingDateOverrides;
   onClose: () => void;
   onCreate: (odEvent: ODEvent, logs: DailyLog[]) => void;
 }
@@ -47,6 +57,8 @@ export const CreateODSheet = ({
   visible,
   subjects,
   timetable,
+  workingDays,
+  workingDateOverrides,
   onClose,
   onCreate,
 }: CreateODSheetProps) => {
@@ -76,6 +88,8 @@ export const CreateODSheet = ({
       startDate,
       endDate,
       note: "Auto-filled from timetable",
+      workingDays,
+      workingDateOverrides,
     });
     setTemplateLogs(template.logs);
     setSelection(
