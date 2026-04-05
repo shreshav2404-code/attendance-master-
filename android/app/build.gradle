@@ -79,6 +79,7 @@ def enableProguardInReleaseBuilds = (findProperty('android.enableProguardInRelea
  * this variant is about 6MiB larger per architecture than default.
  */
 def jscFlavor = 'org.webkit:android-jsc:+'
+def hasEasManagedSigning = System.getenv("EAS_BUILD_ANDROID_KEYSTORE_PATH") != null
 
 android {
     ndkVersion rootProject.ext.ndkVersion
@@ -101,15 +102,25 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        release {
+            if (hasEasManagedSigning) {
+                storeFile file(System.getenv("EAS_BUILD_ANDROID_KEYSTORE_PATH"))
+                storePassword System.getenv("EAS_BUILD_ANDROID_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("EAS_BUILD_ANDROID_KEY_ALIAS")
+                keyPassword System.getenv("EAS_BUILD_ANDROID_KEY_PASSWORD")
+            }
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            if (hasEasManagedSigning) {
+                signingConfig signingConfigs.release
+            } else {
+                signingConfig signingConfigs.debug
+            }
             shrinkResources (findProperty('android.enableShrinkResourcesInReleaseBuilds')?.toBoolean() ?: false)
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"

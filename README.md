@@ -66,11 +66,45 @@ npm test -- --runInBand
 ## Build Artifacts
 
 ```bash
-eas build --platform android
-eas build --platform ios
+eas build --platform android --profile preview         # APK (internal testing)
+eas build --platform android --profile production      # AAB (Play Store)
+eas build --platform android --profile production-apk  # APK (production signed)
+eas build --platform ios --profile preview             # IPA (internal testing)
+eas build --platform ios --profile production          # App Store build
+```
+
+## Release Dry-Run Checklist
+
+```bash
+# 1) Project health
+npm ci
+npm run typecheck
+npm run lint
+npm test -- --runInBand
+npx expo config --type public
+npx expo-doctor
+
+# 2) Android emulator sanity check
+adb devices
+adb reverse tcp:8081 tcp:8081
+npx expo run:android
+npx expo start --dev-client --clear
+
+# 3) EAS auth + project link
+npx eas whoami
+npx eas project:info
+
+# 4) Cloud build dry-run
+eas build --platform android --profile preview
+eas build --platform ios --profile preview
+
+# 5) Production build
+eas build --platform android --profile production
+eas build --platform ios --profile production
 ```
 
 ## Notes
 
 - iOS deployment target is `15.1` (configured via `expo-build-properties` for SDK 52 compatibility).
 - If `expo-doctor` shows a warning about native folders + app config fields, that is expected in prebuild/native workflow unless you move fully to CNG (no committed `android/ios` folders).
+- Release signing for Android is configured to use EAS credentials automatically when `EAS_BUILD_ANDROID_KEYSTORE_*` variables are present.

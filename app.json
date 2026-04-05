@@ -10,10 +10,12 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.attendx.mobile"
+      "bundleIdentifier": "com.attendx.mobile",
+      "buildNumber": "1"
     },
     "android": {
       "package": "com.attendx.mobile",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#0a0f1e"
@@ -21,6 +23,11 @@
       "permissions": [
         "RECEIVE_BOOT_COMPLETED",
         "VIBRATE"
+      ],
+      "blockedPermissions": [
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
       ]
     },
     "web": {
@@ -55,8 +62,11 @@
         }
       ]
     ],
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "notification": {
-      "icon": "./assets/images/icon.png",
+      "icon": "./notification-icon.png",
       "color": "#1a5fa8"
     },
     "experiments": {
