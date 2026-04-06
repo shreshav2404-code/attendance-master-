@@ -14,6 +14,9 @@ export const useSkipSimulation = (date = getTodayKey()) => {
   const workingDateOverrides = useStudentStore(
     (state) => state.workingDateOverrides,
   );
+  const officialSyncSnapshotBySubject = useStudentStore(
+    (state) => state.officialSyncSnapshotBySubject,
+  );
   const subjects = useSubjectStore((state) => state.subjects);
   const timetable = useSubjectStore((state) => state.timetable);
   const dailyLogs = useAttendanceStore((state) => state.dailyLogs);
@@ -37,6 +40,7 @@ export const useSkipSimulation = (date = getTodayKey()) => {
       subjects,
       logs: dailyLogs,
       odEvents,
+      officialSyncSnapshotBySubject,
     }),
     slotsToday,
     subjects,
