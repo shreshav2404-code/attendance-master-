@@ -9,6 +9,7 @@ import { Button, Switch, TextInput } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ExamWeekToggle } from "@/components/settings/ExamWeekToggle";
+import { PendingODManager } from "@/components/settings/PendingODManager";
 import { SyncReportForm } from "@/components/settings/SyncReportForm";
 import { Toast } from "@/components/shared/Toast";
 import { buildODTemplateFromTimetable } from "@/lib/calculations";
@@ -28,6 +29,10 @@ import {
   buildOfficialImportPlan,
   parseOfficialAttendanceWorkbook,
 } from "@/lib/officialReportImport";
+import {
+  buildPendingODImportPlan,
+  parsePendingODImportFile,
+} from "@/lib/pendingODImport";
 import { formatDateLabel, generateId, getTodayKey } from "@/lib/utils";
 import { useAttendanceSummary } from "@/hooks/useAttendanceSummary";
 import { useDailyLog } from "@/hooks/useDailyLog";
@@ -68,6 +73,8 @@ export default function SettingsScreen() {
   const [syncPrefillRows, setSyncPrefillRows] = useState<OfficialSubjectInput[]>([]);
   const [syncImportLoading, setSyncImportLoading] = useState(false);
   const [syncImportSummary, setSyncImportSummary] = useState("");
+  const [pendingImportLoading, setPendingImportLoading] = useState(false);
+  const [pendingImportSummary, setPendingImportSummary] = useState("");
   const [saturdayDate, setSaturdayDate] = useState(getTodayKey());
   const [saturdayWorking, setSaturdayWorking] = useState(true);
   const [profile, setProfile] = useState({
@@ -196,6 +203,167 @@ export default function SettingsScreen() {
     }
   };
 
+  const addManualPendingOD = async ({
+    subjectId,
+    date,
+    hours,
+    reason,
+  }: {
+    subjectId: string;
+    date: string;
+    hours: number;
+    reason: string;
+  }): Promise<void> => {
+    await triggerTapHaptic();
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      setToastMessage("Date must be YYYY-MM-DD");
+      await triggerWarningHaptic();
+      setTimeout(() => setToastMessage(""), 1800);
+      return;
+    }
+
+    const subject = subjects.find((item) => item.id === subjectId);
+    if (!subject) {
+      setToastMessage("Select a valid subject");
+      await triggerWarningHaptic();
+      setTimeout(() => setToastMessage(""), 1800);
+      return;
+    }
+
+    const safeHours = Number(hours);
+    if (!Number.isFinite(safeHours) || safeHours <= 0) {
+      setToastMessage("Hours must be greater than 0");
+      await triggerWarningHaptic();
+      setTimeout(() => setToastMessage(""), 1800);
+      return;
+    }
+
+    const odEventId = generateId("od");
+    const createdAt = new Date().toISOString();
+    const eventName = `Manual Pending OD · ${subject.shortName}`;
+    const nextEvent = {
+      id: odEventId,
+      name: eventName,
+      date,
+      reason,
+      type: "other" as const,
+      subjects: [
+        {
+          subjectId,
+          hours: safeHours,
+          registered: false,
+        },
+      ],
+      createdAt,
+    };
+    const nextLog = {
+      id: `${odEventId}_0`,
+      date,
+      subjectId,
+      status: "od" as const,
+      hours: safeHours,
+      odEventId,
+      note: reason,
+      createdAt,
+    };
+    const latestEvents = useODStore.getState().odEvents;
+    const latestLogs = useAttendanceStore.getState().dailyLogs;
+    await setODEvents([...latestEvents, nextEvent]);
+    await setDailyLogs([...latestLogs, nextLog]);
+
+    setToastMessage(`Added ${safeHours}h pending OD for ${subject.shortName}`);
+    await triggerSuccessHaptic();
+    setTimeout(() => setToastMessage(""), 1800);
+  };
+
+  const importPendingODFile = async (): Promise<void> => {
+    await triggerTapHaptic();
+    setPendingImportLoading(true);
+
+    try {
+      const pickedDocument = await DocumentPicker.getDocumentAsync({
+        type: [
+          "text/csv",
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          "application/vnd.ms-excel",
+        ],
+        copyToCacheDirectory: true,
+      });
+
+      if (pickedDocument.canceled) {
+        return;
+      }
+
+      const pickedAsset = pickedDocument.assets[0];
+      if (!pickedAsset) {
+        setToastMessage("No file selected");
+        await triggerWarningHaptic();
+        setTimeout(() => setToastMessage(""), 1800);
+        return;
+      }
+
+      const normalizedName = (pickedAsset.name ?? "").toLowerCase();
+      const normalizedMimeType = (pickedAsset.mimeType ?? "").toLowerCase();
+      const isCsvFile =
+        normalizedName.endsWith(".csv") || normalizedMimeType.includes("csv");
+      const fileContent = await FileSystem.readAsStringAsync(pickedAsset.uri, {
+        encoding: isCsvFile
+          ? FileSystem.EncodingType.UTF8
+          : FileSystem.EncodingType.Base64,
+      });
+      const parsed = parsePendingODImportFile({
+        content: fileContent,
+        kind: isCsvFile ? "csv" : "workbook",
+      });
+      const importPlan = buildPendingODImportPlan({
+        parsed,
+        subjects: useSubjectStore.getState().subjects,
+      });
+
+      if (importPlan.odEvents.length === 0) {
+        const skipped = importPlan.skippedRows.length;
+        setPendingImportSummary(
+          skipped > 0
+            ? `No valid pending OD rows imported. Skipped ${skipped} rows.`
+            : "No valid pending OD rows imported.",
+        );
+        setToastMessage("No pending OD rows were imported");
+        await triggerWarningHaptic();
+        setTimeout(() => setToastMessage(""), 2200);
+        return;
+      }
+
+      if (importPlan.createdSubjects.length > 0) {
+        const latestSubjects = useSubjectStore.getState().subjects;
+        await setSubjects([...latestSubjects, ...importPlan.createdSubjects]);
+      }
+
+      const latestEvents = useODStore.getState().odEvents;
+      const latestLogs = useAttendanceStore.getState().dailyLogs;
+      await setODEvents([...latestEvents, ...importPlan.odEvents]);
+      await setDailyLogs([...latestLogs, ...importPlan.logs]);
+
+      const matchedCount =
+        importPlan.matches.length - importPlan.createdSubjects.length;
+      const summary = `Imported ${importPlan.odEvents.length} pending OD rows. Matched ${matchedCount}, created ${importPlan.createdSubjects.length} subjects, skipped ${importPlan.skippedRows.length}.`;
+      setPendingImportSummary(summary);
+      setToastMessage("Pending OD file imported");
+      await triggerSuccessHaptic();
+      setTimeout(() => setToastMessage(""), 2200);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Could not import pending OD file.";
+      setToastMessage(message);
+      await triggerWarningHaptic();
+      setTimeout(() => setToastMessage(""), 2600);
+    } finally {
+      setPendingImportLoading(false);
+    }
+  };
+
   if (!student) {
     return (
       <SafeAreaView className="flex-1 bg-background">
@@ -318,6 +486,16 @@ export default function SettingsScreen() {
               setTimeout(() => setToastMessage(""), 1800);
               return result.reports;
             }}
+          />
+        </View>
+
+        <View className="mt-6">
+          <PendingODManager
+            subjects={subjects}
+            onManualAdd={addManualPendingOD}
+            onImportPress={importPendingODFile}
+            importLoading={pendingImportLoading}
+            importSummary={pendingImportSummary}
           />
         </View>
 

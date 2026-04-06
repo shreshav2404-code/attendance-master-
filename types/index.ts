@@ -221,6 +221,39 @@ export interface OfficialImportPlan {
   skippedRows: OfficialAttendanceSubjectRow[];
 }
 
+export interface PendingODUploadRow {
+  rowNumber: number;
+  date: string;
+  subjectCode?: string;
+  subjectName?: string;
+  hours: number;
+  reason: string;
+}
+
+export interface PendingODSkippedRow {
+  rowNumber: number;
+  reason: string;
+}
+
+export interface PendingODUploadParseResult {
+  rows: PendingODUploadRow[];
+  skippedRows: PendingODSkippedRow[];
+}
+
+export interface PendingODImportMatch {
+  row: PendingODUploadRow;
+  subjectId: string;
+  matchType: "code" | "name" | "created";
+}
+
+export interface PendingODImportPlan {
+  createdSubjects: Subject[];
+  matches: PendingODImportMatch[];
+  odEvents: ODEvent[];
+  logs: DailyLog[];
+  skippedRows: PendingODSkippedRow[];
+}
+
 export interface SyncApplicationResult {
   reports: SyncReport[];
   odEvents: ODEvent[];
