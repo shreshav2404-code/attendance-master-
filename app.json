@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "Attendex 3.0",
+    "name": "Attendex 4.0",
     "slug": "attendx",
-    "version": "3.0.1",
+    "version": "4.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "attendx",

@@ -1,3 +1,5 @@
+import * as DocumentPicker from "expo-document-picker";
+import * as FileSystem from "expo-file-system";
 import { router, useLocalSearchParams } from "expo-router";
 import { Trash2 } from "lucide-react-native";
 import { useState } from "react";
@@ -11,6 +13,10 @@ import { ProgressBar } from "@/components/shared/ProgressBar";
 import { SubjectBadge } from "@/components/shared/SubjectBadge";
 import { SUBJECT_COLOR_PALETTE } from "@/lib/constants";
 import { triggerSuccessHaptic, triggerTapHaptic, triggerWarningHaptic } from "@/lib/haptics";
+import {
+  buildOfficialImportPlan,
+  parseOfficialAttendanceWorkbook,
+} from "@/lib/officialReportImport";
 import { generateId } from "@/lib/utils";
 import { useSubjects } from "@/hooks/useSubjects";
 
@@ -26,7 +32,7 @@ const defaultSubjectColor = SUBJECT_COLOR_PALETTE[0]!;
 
 export default function SubjectsScreen() {
   const params = useLocalSearchParams<{ mode?: string | string[] }>();
-  const { subjects, addSubject, removeSubject } = useSubjects();
+  const { subjects, addSubject, removeSubject, setSubjects } = useSubjects();
   const mode = Array.isArray(params.mode) ? params.mode[0] : params.mode;
   const isEditMode = mode === "edit";
   const {
@@ -44,6 +50,9 @@ export default function SubjectsScreen() {
   });
   const [selectedColor, setSelectedColor] = useState(defaultSubjectColor);
   const [isLab, setIsLab] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importSummary, setImportSummary] = useState("");
+  const [importError, setImportError] = useState("");
 
   const submit = handleSubmit(async (values) => {
     await triggerTapHaptic();
@@ -60,6 +69,72 @@ export default function SubjectsScreen() {
     setIsLab(false);
     setSelectedColor(defaultSubjectColor);
   });
+
+  const importSubjectsFromOfficialReport = async (): Promise<void> => {
+    await triggerTapHaptic();
+    setImporting(true);
+    setImportError("");
+
+    try {
+      const pickedDocument = await DocumentPicker.getDocumentAsync({
+        type: [
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          "application/vnd.ms-excel",
+        ],
+        copyToCacheDirectory: true,
+      });
+
+      if (pickedDocument.canceled) {
+        return;
+      }
+
+      const pickedAsset = pickedDocument.assets[0];
+      if (!pickedAsset) {
+        setImportError("No file selected.");
+        await triggerWarningHaptic();
+        return;
+      }
+
+      const workbookBase64 = await FileSystem.readAsStringAsync(pickedAsset.uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      const parsedReport = parseOfficialAttendanceWorkbook(workbookBase64);
+      const importPlan = buildOfficialImportPlan({
+        report: parsedReport,
+        subjects,
+      });
+
+      if (importPlan.matches.length === 0) {
+        setImportError("No valid subject rows found in this report.");
+        await triggerWarningHaptic();
+        return;
+      }
+
+      if (importPlan.createdSubjects.length > 0) {
+        await setSubjects([...subjects, ...importPlan.createdSubjects]);
+      }
+
+      const totalMapped = importPlan.matches.length;
+      const createdCount = importPlan.createdSubjects.length;
+      const matchedCount = totalMapped - createdCount;
+      const studentLabel = parsedReport.student.name
+        ? ` for ${parsedReport.student.name}`
+        : "";
+      setImportSummary(
+        `Imported ${totalMapped} subjects${studentLabel}. Matched ${matchedCount}, added ${createdCount} new subjects.`,
+      );
+      await triggerSuccessHaptic();
+    } catch (error) {
+      setImportError(
+        error instanceof Error
+          ? error.message
+          : "Could not import this file. Please use the official Excel format.",
+      );
+      await triggerWarningHaptic();
+    } finally {
+      setImporting(false);
+    }
+  };
 
   return (
     <ScrollView className="flex-1 bg-background" contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
@@ -187,6 +262,26 @@ export default function SubjectsScreen() {
         >
           Add subject
         </Button>
+        <Button
+          mode="contained-tonal"
+          style={{ marginTop: 12 }}
+          contentStyle={{ paddingVertical: 8 }}
+          loading={importing}
+          disabled={importing}
+          onPress={() => void importSubjectsFromOfficialReport()}
+        >
+          Import from official Excel
+        </Button>
+        {importSummary ? (
+          <Text className="mt-3 font-inter text-xs leading-5 text-white/65">
+            {importSummary}
+          </Text>
+        ) : null}
+        {importError ? (
+          <Text className="mt-2 font-inter text-xs leading-5 text-red-300">
+            {importError}
+          </Text>
+        ) : null}
       </View>
 
       <View className="mt-6 gap-3">
