@@ -127,6 +127,7 @@ export interface StudentBundle {
   notificationSettings: NotificationSettings;
   examWeek: ExamWeekSettings;
   lastSyncedAt?: string;
+  officialSyncSnapshotBySubject?: OfficialSyncSnapshotBySubject;
 }
 
 export interface HourSlotBundle {
@@ -169,6 +170,15 @@ export interface OfficialSubjectInput {
   officialAH: number;
   officialDL: number;
 }
+
+export interface OfficialSyncSnapshot {
+  TH: number;
+  AH: number;
+  DL: number;
+  syncedAt: string;
+}
+
+export type OfficialSyncSnapshotBySubject = Record<string, OfficialSyncSnapshot>;
 
 export interface OfficialAttendanceStudentInfo {
   name?: string;
@@ -215,6 +225,7 @@ export interface SyncApplicationResult {
   reports: SyncReport[];
   odEvents: ODEvent[];
   lastSyncedAt: string;
+  officialSyncSnapshotBySubject: OfficialSyncSnapshotBySubject;
 }
 
 export interface ODTemplateResult {

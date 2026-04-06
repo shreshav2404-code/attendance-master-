@@ -13,6 +13,9 @@ export const useStudent = () => {
   );
   const examWeek = useStudentStore((state) => state.examWeek);
   const lastSyncedAt = useStudentStore((state) => state.lastSyncedAt);
+  const officialSyncSnapshotBySubject = useStudentStore(
+    (state) => state.officialSyncSnapshotBySubject,
+  );
   const hydrated = useStudentStore((state) => state.hydrated);
 
   return {
@@ -24,6 +27,7 @@ export const useStudent = () => {
     notificationSettings,
     examWeek,
     lastSyncedAt,
+    officialSyncSnapshotBySubject,
     hydrated,
     hydrate: useStudentStore((state) => state.hydrate),
     setStudent: useStudentStore((state) => state.setStudent),
@@ -41,5 +45,8 @@ export const useStudent = () => {
     setExamWeek: useStudentStore((state) => state.setExamWeek),
     setOnboarded: useStudentStore((state) => state.setOnboarded),
     setLastSyncedAt: useStudentStore((state) => state.setLastSyncedAt),
+    setOfficialSyncSnapshotBySubject: useStudentStore(
+      (state) => state.setOfficialSyncSnapshotBySubject,
+    ),
   };
 };

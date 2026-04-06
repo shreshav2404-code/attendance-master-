@@ -10,6 +10,9 @@ import { useSubjectStore } from "@/store/subjectStore";
 
 export const useAttendanceSummary = () => {
   const student = useStudentStore((state) => state.student);
+  const officialSyncSnapshotBySubject = useStudentStore(
+    (state) => state.officialSyncSnapshotBySubject,
+  );
   const subjects = useSubjectStore((state) => state.subjects);
   const dailyLogs = useAttendanceStore((state) => state.dailyLogs);
   const odEvents = useODStore((state) => state.odEvents);
@@ -36,6 +39,7 @@ export const useAttendanceSummary = () => {
     subjects,
     logs: dailyLogs,
     odEvents,
+    officialSyncSnapshotBySubject,
   });
   const overall = calculateOverallMetrics({
     summaries,
@@ -46,6 +50,7 @@ export const useAttendanceSummary = () => {
     subjects,
     logs: dailyLogs,
     odEvents,
+    officialSyncSnapshotBySubject,
   });
 
   return {

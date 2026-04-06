@@ -73,6 +73,9 @@ export default function RootLayout() {
   const notificationSettings = useStudentStore(
     (state) => state.notificationSettings,
   );
+  const officialSyncSnapshotBySubject = useStudentStore(
+    (state) => state.officialSyncSnapshotBySubject,
+  );
   const subjects = useSubjectStore((state) => state.subjects);
   const dailyLogs = useAttendanceStore((state) => state.dailyLogs);
   const odEvents = useODStore((state) => state.odEvents);
@@ -185,6 +188,7 @@ export default function RootLayout() {
         subjects,
         logs: dailyLogs,
         odEvents,
+        officialSyncSnapshotBySubject,
       });
 
       await runProactiveAlerts({
@@ -204,6 +208,7 @@ export default function RootLayout() {
     dailyLogs,
     notificationSettings,
     odEvents,
+    officialSyncSnapshotBySubject,
     ready,
     student,
     subjects,

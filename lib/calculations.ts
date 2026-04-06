@@ -17,6 +17,7 @@ import type {
   DailyLog,
   ODTemplateResult,
   ODEvent,
+  OfficialSyncSnapshotBySubject,
   OverallAttendanceMetrics,
   SkipSimulationResult,
   Student,
@@ -103,19 +104,21 @@ export const calculateAttendanceSummary = ({
   logs,
   odEvents,
   estimatedFutureTH,
+  officialSyncSnapshotBySubject,
 }: {
   student: Student;
   subject: Subject;
   logs: DailyLog[];
   odEvents: ODEvent[];
   estimatedFutureTH?: number;
+  officialSyncSnapshotBySubject?: OfficialSyncSnapshotBySubject;
 }): AttendanceSummary => {
   const subjectLogs = logs.filter((log) => log.subjectId === subject.id);
-  const TH = subjectLogs.reduce(
+  const calculatedTH = subjectLogs.reduce(
     (sum, log) => (log.status === "suspended" ? sum : sum + log.hours),
     0,
   );
-  const AH = subjectLogs.reduce(
+  const calculatedAH = subjectLogs.reduce(
     (sum, log) => (log.status === "present" ? sum + log.hours : sum),
     0,
   );
@@ -123,7 +126,14 @@ export const calculateAttendanceSummary = ({
     (sum, log) => (log.status === "od" ? sum + log.hours : sum),
     0,
   );
-  const DL = Math.min(trackedODHours, getRegisteredODHours(subject.id, odEvents));
+  const calculatedDL = Math.min(
+    trackedODHours,
+    getRegisteredODHours(subject.id, odEvents),
+  );
+  const officialSnapshot = officialSyncSnapshotBySubject?.[subject.id];
+  const TH = Math.max(calculatedTH, officialSnapshot?.TH ?? 0);
+  const AH = Math.max(calculatedAH, officialSnapshot?.AH ?? 0);
+  const DL = Math.max(calculatedDL, officialSnapshot?.DL ?? 0);
   const pendingOD = Math.max(0, trackedODHours - DL);
   const AH_DL = AH + DL;
   const AH_allOD = AH_DL + pendingOD;
@@ -172,12 +182,14 @@ export const calculateAttendanceSummaries = ({
   logs,
   odEvents,
   estimatedFutureTHBySubject,
+  officialSyncSnapshotBySubject,
 }: {
   student: Student;
   subjects: Subject[];
   logs: DailyLog[];
   odEvents: ODEvent[];
   estimatedFutureTHBySubject?: Record<string, number>;
+  officialSyncSnapshotBySubject?: OfficialSyncSnapshotBySubject;
 }): AttendanceSummary[] =>
   subjects.map((subject) =>
     calculateAttendanceSummary({
@@ -186,6 +198,7 @@ export const calculateAttendanceSummaries = ({
       logs,
       odEvents,
       estimatedFutureTH: estimatedFutureTHBySubject?.[subject.id],
+      officialSyncSnapshotBySubject,
     }),
   );
 
@@ -268,11 +281,13 @@ export const buildWeeklyTrend = ({
   subjects,
   logs,
   odEvents,
+  officialSyncSnapshotBySubject,
 }: {
   student: Student;
   subjects: Subject[];
   logs: DailyLog[];
   odEvents: ODEvent[];
+  officialSyncSnapshotBySubject?: OfficialSyncSnapshotBySubject;
 }): TrendPoint[] => {
   const weekStarts = Array.from(
     new Set(
@@ -305,6 +320,7 @@ export const buildWeeklyTrend = ({
       subjects,
       logs: cumulativeLogs,
       odEvents,
+      officialSyncSnapshotBySubject,
     });
     const overall = calculateOverallMetrics({
       summaries,

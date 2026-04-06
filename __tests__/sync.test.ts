@@ -73,6 +73,12 @@ describe("sync", () => {
     });
 
     expect(result.reports[0]?.newlyRegisteredOD).toBe(1);
+    expect(result.officialSyncSnapshotBySubject.ml).toEqual({
+      TH: 11,
+      AH: 8,
+      DL: 2,
+      syncedAt: "2026-04-05T00:00:00.000Z",
+    });
     expect(result.odEvents[0]?.subjects).toEqual(
       expect.arrayContaining([
         expect.objectContaining({

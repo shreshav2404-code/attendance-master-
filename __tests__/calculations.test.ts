@@ -213,6 +213,29 @@ describe("calculations", () => {
     expect(summary.percentProjected).toBe(66.67);
   });
 
+  it("calculateAttendanceSummary uses official sync snapshot as baseline", () => {
+    const summary = calculateAttendanceSummary({
+      student,
+      subject: subjects[0]!,
+      logs: [],
+      odEvents: [],
+      officialSyncSnapshotBySubject: {
+        ml: {
+          TH: 32,
+          AH: 24,
+          DL: 1,
+          syncedAt: "2026-04-06T00:00:00.000Z",
+        },
+      },
+    });
+
+    expect(summary.TH).toBe(32);
+    expect(summary.AH).toBe(24);
+    expect(summary.DL).toBe(1);
+    expect(summary.percentBefore).toBe(75);
+    expect(summary.percentAfterDL).toBe(78.13);
+  });
+
   it("calculateAttendanceSummary keeps unregistered OD as pending", () => {
     const pendingOnlySummary = calculateAttendanceSummary({
       student,

@@ -55,6 +55,8 @@ export default function SettingsScreen() {
     removeWorkingDateOverride,
     setNotificationSettings,
     setLastSyncedAt,
+    officialSyncSnapshotBySubject,
+    setOfficialSyncSnapshotBySubject,
   } = useStudent();
   const { subjects, setSubjects } = useSubjects();
   const { timetable } = useTimetable();
@@ -307,6 +309,10 @@ export default function SettingsScreen() {
               });
               void setODEvents(result.odEvents);
               void setLastSyncedAt(result.lastSyncedAt);
+              void setOfficialSyncSnapshotBySubject({
+                ...officialSyncSnapshotBySubject,
+                ...result.officialSyncSnapshotBySubject,
+              });
               setToastMessage("Official sync applied");
               void triggerSuccessHaptic();
               setTimeout(() => setToastMessage(""), 1800);
@@ -612,6 +618,8 @@ export default function SettingsScreen() {
                   notificationSettings: backup.studentBundle.notificationSettings,
                   examWeek: backup.studentBundle.examWeek,
                   lastSyncedAt: backup.studentBundle.lastSyncedAt,
+                  officialSyncSnapshotBySubject:
+                    backup.studentBundle.officialSyncSnapshotBySubject ?? {},
                   onboarded: backup.onboarded,
                 }));
                 useSubjectStore.setState((currentValue) => ({
@@ -689,6 +697,7 @@ export default function SettingsScreen() {
                   notificationSettings: DEFAULT_NOTIFICATION_SETTINGS,
                   examWeek: DEFAULT_EXAM_WEEK_SETTINGS,
                   lastSyncedAt: undefined,
+                  officialSyncSnapshotBySubject: {},
                   onboarded: false,
                   hydrated: true,
                 }));

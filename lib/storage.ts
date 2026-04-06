@@ -39,6 +39,7 @@ const defaultStudentBundle: StudentBundle = {
   student: null,
   notificationSettings: DEFAULT_NOTIFICATION_SETTINGS,
   examWeek: DEFAULT_EXAM_WEEK_SETTINGS,
+  officialSyncSnapshotBySubject: {},
 };
 
 const defaultHourSlotBundle: HourSlotBundle = {
@@ -87,8 +88,21 @@ const writeJson = async <T>(key: string, value: T): Promise<void> => {
   await AsyncStorage.setItem(key, serializedValue);
 };
 
-export const loadStudentBundle = async (): Promise<StudentBundle> =>
-  readJson<StudentBundle>(STORAGE_KEYS.student, defaultStudentBundle);
+export const loadStudentBundle = async (): Promise<StudentBundle> => {
+  const studentBundle = await readJson<StudentBundle>(
+    STORAGE_KEYS.student,
+    defaultStudentBundle,
+  );
+
+  return {
+    ...studentBundle,
+    notificationSettings:
+      studentBundle.notificationSettings ?? DEFAULT_NOTIFICATION_SETTINGS,
+    examWeek: studentBundle.examWeek ?? DEFAULT_EXAM_WEEK_SETTINGS,
+    officialSyncSnapshotBySubject:
+      studentBundle.officialSyncSnapshotBySubject ?? {},
+  };
+};
 
 export const saveStudentBundle = async (bundle: StudentBundle): Promise<void> =>
   writeJson(STORAGE_KEYS.student, bundle);

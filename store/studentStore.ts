@@ -19,6 +19,7 @@ import type {
   ExamWeekSettings,
   HourSlot,
   NotificationSettings,
+  OfficialSyncSnapshotBySubject,
   Student,
   StudentBundle,
   WorkingDateOverrides,
@@ -36,6 +37,7 @@ interface StudentStoreState {
   notificationSettings: NotificationSettings;
   examWeek: ExamWeekSettings;
   lastSyncedAt?: string;
+  officialSyncSnapshotBySubject: OfficialSyncSnapshotBySubject;
   hydrate: () => Promise<void>;
   setStudent: (student: Student | null) => Promise<void>;
   updateStudent: (updates: Partial<Student>) => Promise<void>;
@@ -51,18 +53,26 @@ interface StudentStoreState {
   setExamWeek: (examWeek: ExamWeekSettings) => Promise<void>;
   setOnboarded: (onboarded: boolean) => Promise<void>;
   setLastSyncedAt: (lastSyncedAt?: string) => Promise<void>;
+  setOfficialSyncSnapshotBySubject: (
+    officialSyncSnapshotBySubject: OfficialSyncSnapshotBySubject,
+  ) => Promise<void>;
 }
 
 const buildStudentBundle = (
   state: Pick<
     StudentStoreState,
-    "student" | "notificationSettings" | "examWeek" | "lastSyncedAt"
+    | "student"
+    | "notificationSettings"
+    | "examWeek"
+    | "lastSyncedAt"
+    | "officialSyncSnapshotBySubject"
   >,
 ): StudentBundle => ({
   student: state.student,
   notificationSettings: state.notificationSettings,
   examWeek: state.examWeek,
   lastSyncedAt: state.lastSyncedAt,
+  officialSyncSnapshotBySubject: state.officialSyncSnapshotBySubject,
 });
 
 export const useStudentStore = create<StudentStoreState>((set, get) => ({
@@ -76,6 +86,7 @@ export const useStudentStore = create<StudentStoreState>((set, get) => ({
   notificationSettings: DEFAULT_NOTIFICATION_SETTINGS,
   examWeek: DEFAULT_EXAM_WEEK_SETTINGS,
   lastSyncedAt: undefined,
+  officialSyncSnapshotBySubject: {},
   hydrate: async () => {
     if (get().hydrated || get().hydrating) {
       return;
@@ -99,6 +110,8 @@ export const useStudentStore = create<StudentStoreState>((set, get) => ({
       notificationSettings: studentBundle.notificationSettings,
       examWeek: studentBundle.examWeek,
       lastSyncedAt: studentBundle.lastSyncedAt,
+      officialSyncSnapshotBySubject:
+        studentBundle.officialSyncSnapshotBySubject ?? {},
     });
   },
   setStudent: async (student) => {
@@ -169,6 +182,10 @@ export const useStudentStore = create<StudentStoreState>((set, get) => ({
   },
   setLastSyncedAt: async (lastSyncedAt) => {
     set({ lastSyncedAt });
+    await saveStudentBundle(buildStudentBundle(get()));
+  },
+  setOfficialSyncSnapshotBySubject: async (officialSyncSnapshotBySubject) => {
+    set({ officialSyncSnapshotBySubject });
     await saveStudentBundle(buildStudentBundle(get()));
   },
 }));

@@ -2,6 +2,7 @@ import { getTodayKey } from "@/lib/utils";
 import type {
   AttendanceSummary,
   ODEvent,
+  OfficialSyncSnapshotBySubject,
   OfficialSubjectInput,
   SyncApplicationResult,
   SyncReport,
@@ -105,6 +106,19 @@ export const applyOfficialSync = ({
   syncedAt?: string;
 }): SyncApplicationResult => {
   const reports = buildSyncReports({ officialInputs, summaries });
+  const officialSyncSnapshotBySubject: OfficialSyncSnapshotBySubject =
+    reports.reduce<OfficialSyncSnapshotBySubject>(
+      (accumulator, report) => ({
+        ...accumulator,
+        [report.subjectId]: {
+          TH: Math.max(0, report.officialTH),
+          AH: Math.max(0, report.officialAH),
+          DL: Math.max(0, report.officialDL),
+          syncedAt,
+        },
+      }),
+      {},
+    );
   let updatedEvents = [...odEvents];
 
   reports.forEach((report) => {
@@ -140,5 +154,6 @@ export const applyOfficialSync = ({
     reports,
     odEvents: updatedEvents,
     lastSyncedAt: syncedAt,
+    officialSyncSnapshotBySubject,
   };
 };
