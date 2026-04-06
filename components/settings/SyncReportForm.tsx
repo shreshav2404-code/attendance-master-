@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ScrollView, Text, View } from "react-native";
 import { Button, TextInput } from "react-native-paper";
 
@@ -13,37 +13,96 @@ interface SyncReportFormProps {
   subjects: Subject[];
   summaries: AttendanceSummary[];
   onApply: (officialInputs: OfficialSubjectInput[]) => SyncReport[];
+  prefillRows?: OfficialSubjectInput[];
+  onImportPress?: () => Promise<void> | void;
+  importLoading?: boolean;
+  importSummary?: string;
 }
 
 export const SyncReportForm = ({
   subjects,
   summaries,
   onApply,
+  prefillRows,
+  onImportPress,
+  importLoading = false,
+  importSummary,
 }: SyncReportFormProps) => {
-  const [rows, setRows] = useState<Record<string, OfficialSubjectInput>>(
-    Object.fromEntries(
-      subjects.map((subject) => {
-        const summary = summaries.find((item) => item.subjectId === subject.id);
-
-        return [
-          subject.id,
-          {
-            subjectId: subject.id,
-            officialTH: summary?.TH ?? 0,
-            officialAH: summary?.AH ?? 0,
-            officialDL: summary?.DL ?? 0,
-          },
-        ];
-      }),
-    ),
-  );
+  const [rows, setRows] = useState<Record<string, OfficialSubjectInput>>({});
   const [reports, setReports] = useState<SyncReport[]>([]);
+
+  useEffect(() => {
+    setRows((currentRows) => {
+      const nextRows: Record<string, OfficialSubjectInput> = {};
+      let changed = false;
+
+      subjects.forEach((subject) => {
+        const current = currentRows[subject.id];
+        const summary = summaries.find((item) => item.subjectId === subject.id);
+        const fallback: OfficialSubjectInput = {
+          subjectId: subject.id,
+          officialTH: summary?.TH ?? 0,
+          officialAH: summary?.AH ?? 0,
+          officialDL: summary?.DL ?? 0,
+        };
+
+        if (current) {
+          nextRows[subject.id] = current;
+        } else {
+          nextRows[subject.id] = fallback;
+          changed = true;
+        }
+      });
+
+      if (Object.keys(currentRows).length !== subjects.length) {
+        changed = true;
+      }
+
+      return changed ? nextRows : currentRows;
+    });
+  }, [subjects, summaries]);
+
+  useEffect(() => {
+    if (!prefillRows || prefillRows.length === 0) {
+      return;
+    }
+
+    setRows((currentRows) => {
+      const nextRows = { ...currentRows };
+      prefillRows.forEach((row) => {
+        nextRows[row.subjectId] = {
+          subjectId: row.subjectId,
+          officialTH: row.officialTH,
+          officialAH: row.officialAH,
+          officialDL: row.officialDL,
+        };
+      });
+      return nextRows;
+    });
+  }, [prefillRows]);
 
   return (
     <View className="rounded-[28px] border border-white/10 bg-white/5 p-4">
       <Text className="font-inter-bold text-lg text-white">
         Sync with official report
       </Text>
+      {onImportPress ? (
+        <View className="mt-3">
+          <Button
+            mode="contained-tonal"
+            loading={importLoading}
+            disabled={importLoading}
+            onPress={() => void onImportPress()}
+          >
+            Import Excel report (.xlsx)
+          </Button>
+          {importSummary ? (
+            <Text className="mt-2 font-inter text-xs text-white/60">
+              {importSummary}
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
       <ScrollView
         className="mt-4"
         style={{ maxHeight: 420 }}

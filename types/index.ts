@@ -170,6 +170,47 @@ export interface OfficialSubjectInput {
   officialDL: number;
 }
 
+export interface OfficialAttendanceStudentInfo {
+  name?: string;
+  rollNo?: string;
+  registrationNo?: string;
+  batch?: string;
+  department?: string;
+  term?: string;
+  dateRange?: string;
+}
+
+export interface OfficialAttendanceSubjectRow {
+  serialNo: string;
+  courseName: string;
+  subjectName: string;
+  subjectCode: string;
+  TH: number;
+  AH: number;
+  DL: number;
+  AHDL: number;
+  AHPercent: number;
+  AHDLPercent: number;
+}
+
+export interface OfficialAttendanceReport {
+  student: OfficialAttendanceStudentInfo;
+  rows: OfficialAttendanceSubjectRow[];
+}
+
+export interface OfficialImportMatch {
+  row: OfficialAttendanceSubjectRow;
+  subjectId: string;
+  matchType: "code" | "name" | "created";
+}
+
+export interface OfficialImportPlan {
+  officialInputs: OfficialSubjectInput[];
+  createdSubjects: Subject[];
+  matches: OfficialImportMatch[];
+  skippedRows: OfficialAttendanceSubjectRow[];
+}
+
 export interface SyncApplicationResult {
   reports: SyncReport[];
   odEvents: ODEvent[];

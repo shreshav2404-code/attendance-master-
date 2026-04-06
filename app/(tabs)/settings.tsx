@@ -24,6 +24,10 @@ import { generateAttendancePdf, shareAttendancePdf } from "@/lib/pdf";
 import { shareAttendanceSummary, buildShareSummary } from "@/lib/share";
 import { clearAllStorage, exportBackup, restoreBackup } from "@/lib/storage";
 import { applyOfficialSync } from "@/lib/sync";
+import {
+  buildOfficialImportPlan,
+  parseOfficialAttendanceWorkbook,
+} from "@/lib/officialReportImport";
 import { formatDateLabel, generateId, getTodayKey } from "@/lib/utils";
 import { useAttendanceSummary } from "@/hooks/useAttendanceSummary";
 import { useDailyLog } from "@/hooks/useDailyLog";
@@ -36,6 +40,7 @@ import { useAttendanceStore } from "@/store/attendanceStore";
 import { useODStore } from "@/store/odStore";
 import { useStudentStore } from "@/store/studentStore";
 import { useSubjectStore } from "@/store/subjectStore";
+import type { OfficialSubjectInput } from "@/types";
 
 export default function SettingsScreen() {
   const {
@@ -51,13 +56,16 @@ export default function SettingsScreen() {
     setNotificationSettings,
     setLastSyncedAt,
   } = useStudent();
-  const { subjects } = useSubjects();
+  const { subjects, setSubjects } = useSubjects();
   const { timetable } = useTimetable();
   const { dailyLogs, setDailyLogs } = useDailyLog();
   const { odEvents, setODEvents } = useODEvents();
   const { summaries, overall } = useAttendanceSummary();
   const { initializeNotifications } = useNotifications();
   const [toastMessage, setToastMessage] = useState("");
+  const [syncPrefillRows, setSyncPrefillRows] = useState<OfficialSubjectInput[]>([]);
+  const [syncImportLoading, setSyncImportLoading] = useState(false);
+  const [syncImportSummary, setSyncImportSummary] = useState("");
   const [saturdayDate, setSaturdayDate] = useState(getTodayKey());
   const [saturdayWorking, setSaturdayWorking] = useState(true);
   const [profile, setProfile] = useState({
@@ -105,6 +113,86 @@ export default function SettingsScreen() {
 
     setSaturdayWorking(workingDays.includes("Sat"));
   }, [saturdayDate, workingDateOverrides, workingDays]);
+
+  const importOfficialReport = async (): Promise<void> => {
+    await triggerTapHaptic();
+    setSyncImportLoading(true);
+
+    try {
+      const pickedDocument = await DocumentPicker.getDocumentAsync({
+        type: [
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          "application/vnd.ms-excel",
+        ],
+        copyToCacheDirectory: true,
+      });
+
+      if (pickedDocument.canceled) {
+        return;
+      }
+
+      const pickedAsset = pickedDocument.assets[0];
+      if (!pickedAsset) {
+        setToastMessage("No file selected");
+        await triggerWarningHaptic();
+        setTimeout(() => setToastMessage(""), 1800);
+        return;
+      }
+
+      const workbookBase64 = await FileSystem.readAsStringAsync(pickedAsset.uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      const parsedReport = parseOfficialAttendanceWorkbook(workbookBase64);
+      const importPlan = buildOfficialImportPlan({
+        report: parsedReport,
+        subjects,
+      });
+
+      if (importPlan.officialInputs.length === 0) {
+        setToastMessage("No valid course rows found in the report");
+        await triggerWarningHaptic();
+        setTimeout(() => setToastMessage(""), 2200);
+        return;
+      }
+
+      if (importPlan.createdSubjects.length > 0) {
+        const mergedSubjects = [...subjects, ...importPlan.createdSubjects];
+        await setSubjects(mergedSubjects);
+      }
+
+      setProfile((currentProfile) => ({
+        ...currentProfile,
+        name: parsedReport.student.name ?? currentProfile.name,
+        rollNo: parsedReport.student.rollNo ?? currentProfile.rollNo,
+        batch: parsedReport.student.batch ?? currentProfile.batch,
+        department: parsedReport.student.department ?? currentProfile.department,
+        term: parsedReport.student.term ?? currentProfile.term,
+      }));
+
+      setSyncPrefillRows(importPlan.officialInputs);
+      const importedCount = importPlan.officialInputs.length;
+      const createdCount = importPlan.createdSubjects.length;
+      const matchedCount = importPlan.matches.length - createdCount;
+      const studentLabel = parsedReport.student.name
+        ? ` for ${parsedReport.student.name}`
+        : "";
+      const summary = `Imported ${importedCount} courses${studentLabel}. Matched ${matchedCount}, created ${createdCount} new subjects.`;
+      setSyncImportSummary(summary);
+      setToastMessage("Report imported. Review values, then tap Compare and apply.");
+      await triggerSuccessHaptic();
+      setTimeout(() => setToastMessage(""), 2200);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Could not parse Excel file. Please verify report format.";
+      setToastMessage(message);
+      await triggerWarningHaptic();
+      setTimeout(() => setToastMessage(""), 2600);
+    } finally {
+      setSyncImportLoading(false);
+    }
+  };
 
   if (!student) {
     return (
@@ -206,6 +294,10 @@ export default function SettingsScreen() {
           <SyncReportForm
             subjects={subjects}
             summaries={summaries}
+            prefillRows={syncPrefillRows}
+            onImportPress={importOfficialReport}
+            importLoading={syncImportLoading}
+            importSummary={syncImportSummary}
             onApply={(officialInputs) => {
               void triggerTapHaptic();
               const result = applyOfficialSync({
