@@ -1,16 +1,18 @@
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";
+import * as Clipboard from "expo-clipboard";
 import Constants from "expo-constants";
 import { router } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { Linking, Share, ScrollView, Text, View } from "react-native";
+import { Image, Linking, Share, ScrollView, Text, View } from "react-native";
 import { Button, Switch, TextInput } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ExamWeekToggle } from "@/components/settings/ExamWeekToggle";
 import { PendingODManager } from "@/components/settings/PendingODManager";
 import { SyncReportForm } from "@/components/settings/SyncReportForm";
+import { BottomSheet } from "@/components/shared/BottomSheet";
 import { Toast } from "@/components/shared/Toast";
 import { buildODTemplateFromTimetable } from "@/lib/calculations";
 import {
@@ -47,6 +49,24 @@ import { useStudentStore } from "@/store/studentStore";
 import { useSubjectStore } from "@/store/subjectStore";
 import type { OfficialSubjectInput } from "@/types";
 
+const CREATOR_UPI_CONFIG = {
+  upiId: "kkjha537428-1@okaxis",
+  payeeName: "Keshav Jha",
+  note: "AttendX support",
+  amountInr: "49",
+} as const;
+
+const buildCreatorUpiPayUrl = (): string => {
+  const query = [
+    `pa=${encodeURIComponent(CREATOR_UPI_CONFIG.upiId)}`,
+    `pn=${encodeURIComponent(CREATOR_UPI_CONFIG.payeeName)}`,
+    `tn=${encodeURIComponent(CREATOR_UPI_CONFIG.note)}`,
+    `am=${encodeURIComponent(CREATOR_UPI_CONFIG.amountInr)}`,
+    "cu=INR",
+  ].join("&");
+  return `upi://pay?${query}`;
+};
+
 export default function SettingsScreen() {
   const {
     student,
@@ -75,6 +95,7 @@ export default function SettingsScreen() {
   const [syncImportSummary, setSyncImportSummary] = useState("");
   const [pendingImportLoading, setPendingImportLoading] = useState(false);
   const [pendingImportSummary, setPendingImportSummary] = useState("");
+  const [upiQrVisible, setUpiQrVisible] = useState(false);
   const [saturdayDate, setSaturdayDate] = useState(getTodayKey());
   const [saturdayWorking, setSaturdayWorking] = useState(true);
   const [profile, setProfile] = useState({
@@ -122,6 +143,37 @@ export default function SettingsScreen() {
 
     setSaturdayWorking(workingDays.includes("Sat"));
   }, [saturdayDate, workingDateOverrides, workingDays]);
+
+  const openCreatorUPIPayment = async (): Promise<void> => {
+    await triggerTapHaptic();
+
+    if (!CREATOR_UPI_CONFIG.upiId.trim()) {
+      setToastMessage("Set your UPI ID in settings.tsx to enable payments");
+      await triggerWarningHaptic();
+      setTimeout(() => setToastMessage(""), 2200);
+      return;
+    }
+
+    const upiUrl = buildCreatorUpiPayUrl();
+
+    try {
+      const canOpenUPI = await Linking.canOpenURL(upiUrl);
+
+      if (!canOpenUPI) {
+        throw new Error("UPI app unavailable");
+      }
+
+      await Linking.openURL(upiUrl);
+      setToastMessage("Opened UPI app");
+      await triggerSuccessHaptic();
+      setTimeout(() => setToastMessage(""), 1800);
+    } catch {
+      setUpiQrVisible(true);
+      setToastMessage("UPI app not available. Showing QR fallback.");
+      await triggerWarningHaptic();
+      setTimeout(() => setToastMessage(""), 2200);
+    }
+  };
 
   const importOfficialReport = async (): Promise<void> => {
     await triggerTapHaptic();
@@ -918,6 +970,31 @@ export default function SettingsScreen() {
               keshav jha
             </Text>
           </Text>
+          <Text className="mt-3 font-inter text-sm text-white/65">
+            Support the app with a quick UPI tip.
+          </Text>
+          <Text className="mt-1 font-inter text-xs text-white/45">
+            If I am making life easy for you, help keep my caffeine active for public welfare.
+          </Text>
+          <Button
+            mode="contained-tonal"
+            style={{ marginTop: 12 }}
+            onPress={() => {
+              void openCreatorUPIPayment();
+            }}
+          >
+            Buy me a coffee (UPI)
+          </Button>
+          <Button
+            mode="text"
+            style={{ marginTop: 8 }}
+            onPress={async () => {
+              await triggerTapHaptic();
+              setUpiQrVisible(true);
+            }}
+          >
+            Show QR fallback
+          </Button>
           <Button
             mode="outlined"
             style={{ marginTop: 16 }}
@@ -934,6 +1011,50 @@ export default function SettingsScreen() {
           </Button>
         </View>
       </ScrollView>
+      <BottomSheet
+        visible={upiQrVisible}
+        title="UPI QR Fallback"
+        onClose={() => setUpiQrVisible(false)}
+      >
+        <View className="items-center">
+          <Text className="mb-3 text-center font-inter text-sm text-white/70">
+            Scan this QR if your UPI app chooser does not open.
+          </Text>
+          <Image
+            source={require("../../assets/images/upi-keshav-qr.jpeg")}
+            resizeMode="contain"
+            style={{ width: 260, height: 320, borderRadius: 18 }}
+          />
+          <Text className="mt-2 font-inter text-sm text-white/70">
+            UPI ID: {CREATOR_UPI_CONFIG.upiId}
+          </Text>
+          <View className="mt-4 w-full flex-row gap-3">
+            <Button
+              mode="contained-tonal"
+              style={{ flex: 1 }}
+              onPress={async () => {
+                await triggerTapHaptic();
+                await Clipboard.setStringAsync(CREATOR_UPI_CONFIG.upiId);
+                setToastMessage("UPI ID copied");
+                await triggerSuccessHaptic();
+                setTimeout(() => setToastMessage(""), 1800);
+              }}
+            >
+              Copy UPI ID
+            </Button>
+            <Button
+              mode="outlined"
+              style={{ flex: 1 }}
+              onPress={async () => {
+                await triggerTapHaptic();
+                setUpiQrVisible(false);
+              }}
+            >
+              Close
+            </Button>
+          </View>
+        </View>
+      </BottomSheet>
     </SafeAreaView>
   );
 }
