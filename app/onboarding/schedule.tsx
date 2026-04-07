@@ -1,6 +1,7 @@
 import { router } from "expo-router";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -34,15 +35,54 @@ export default function ScheduleScreen() {
     ),
   );
   const scrollRef = useRef<ScrollView | null>(null);
+  const hourRowOffsetsRef = useRef<Record<number, number>>({});
+  const [focusedHourIndex, setFocusedHourIndex] = useState<number | null>(null);
 
-  const focusHourRow = (index: number): void => {
-    requestAnimationFrame(() => {
-      scrollRef.current?.scrollTo({
-        y: Math.max(0, index * 240),
-        animated: true,
-      });
+  const scrollToHourRow = ({
+    index,
+    keyboardOffset = 0,
+  }: {
+    index: number;
+    keyboardOffset?: number;
+  }): void => {
+    const fallbackOffset = index * 250;
+    const rowOffset = hourRowOffsetsRef.current[index] ?? fallbackOffset;
+    const targetOffset = Math.max(0, rowOffset - 24 + keyboardOffset);
+
+    scrollRef.current?.scrollTo({
+      y: targetOffset,
+      animated: true,
     });
   };
+
+  const focusHourRow = (index: number): void => {
+    setFocusedHourIndex(index);
+    requestAnimationFrame(() => {
+      scrollToHourRow({ index });
+      setTimeout(() => {
+        scrollToHourRow({ index, keyboardOffset: 170 });
+      }, 120);
+    });
+  };
+
+  useEffect(() => {
+    const keyboardShowSubscription = Keyboard.addListener(
+      "keyboardDidShow",
+      () => {
+        if (focusedHourIndex === null) {
+          return;
+        }
+
+        setTimeout(() => {
+          scrollToHourRow({ index: focusedHourIndex, keyboardOffset: 180 });
+        }, 40);
+      },
+    );
+
+    return () => {
+      keyboardShowSubscription.remove();
+    };
+  }, [focusedHourIndex]);
 
   const toggleWorkingDay = (day: WorkingDay) => {
     void triggerTapHaptic();
@@ -63,14 +103,14 @@ export default function ScheduleScreen() {
     <KeyboardAvoidingView
       style={{ flex: 1 }}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 10 : 0}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 10 : 18}
     >
       <ScrollView
         ref={scrollRef}
         className="flex-1 bg-background"
-        contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
+        contentContainerStyle={{ padding: 20, paddingBottom: 220 }}
         keyboardDismissMode="on-drag"
-        keyboardShouldPersistTaps="handled"
+        keyboardShouldPersistTaps="always"
       >
         <Text className="font-inter text-sm uppercase tracking-[1.2px] text-white/50">
           Step 2 of 5
@@ -150,6 +190,9 @@ export default function ScheduleScreen() {
             <View
               key={slot.hour}
               className="rounded-[24px] border border-white/10 bg-white/5 p-4"
+              onLayout={(event) => {
+                hourRowOffsetsRef.current[index] = event.nativeEvent.layout.y;
+              }}
             >
               <Text className="font-inter-semibold text-base text-white">
                 Hour {index + 1}

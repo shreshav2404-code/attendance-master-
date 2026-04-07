@@ -69,12 +69,12 @@ export const SubjectCard = ({
           status={summary.status}
         />
         <PercentageBadge
-          label="+DL"
+          label="+Official"
           value={summary.percentAfterDL}
           status={summary.status}
         />
         <PercentageBadge
-          label="Projected"
+          label="+Pending"
           value={summary.percentProjected}
           status={summary.status}
         />

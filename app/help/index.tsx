@@ -13,20 +13,22 @@ export default function UserManualScreen() {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ padding: 20, paddingBottom: 44 }}
       >
-        <View className="flex-row items-center justify-between">
-          <View className="pr-3">
-            <Text className="font-inter-bold text-3xl text-white">
-              User Manual
-            </Text>
-            <Text className="mt-2 font-inter text-sm leading-6 text-white/65">
-              Complete guide for first setup, daily usage, sync, OD tracking,
-              and updates.
-            </Text>
-          </View>
-          <Button mode="outlined" onPress={() => router.back()}>
-            Back
-          </Button>
-        </View>
+        <Button
+          mode="text"
+          compact
+          icon="arrow-left"
+          style={{ alignSelf: "flex-start", marginBottom: 6 }}
+          onPress={() => router.back()}
+        >
+          Back
+        </Button>
+        <Text className="font-inter-bold text-3xl text-white">
+          User Manual
+        </Text>
+        <Text className="mt-2 font-inter text-sm leading-6 text-white/65">
+          Complete guide for first setup, daily usage, sync, OD tracking, and
+          updates.
+        </Text>
 
         <View className="mt-6 gap-4">
           {USER_MANUAL_SECTIONS.map((section) => (
@@ -62,4 +64,3 @@ export default function UserManualScreen() {
     </SafeAreaView>
   );
 }
-

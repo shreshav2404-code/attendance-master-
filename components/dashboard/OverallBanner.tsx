@@ -1,5 +1,5 @@
 import { Settings2 } from "lucide-react-native";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, Text, View, useWindowDimensions } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 
 import { AnimatedNumber } from "@/components/shared/AnimatedNumber";
@@ -74,6 +74,8 @@ export const OverallBanner = ({
   lastSyncedAt,
   onOpenSettings,
 }: OverallBannerProps) => {
+  const { width } = useWindowDimensions();
+  const compactLayout = width < 390;
   const accentColor =
     overall.percentProjected >= 75
       ? COLORS.success
@@ -111,47 +113,57 @@ export const OverallBanner = ({
         </Pressable>
       </View>
 
-      <View className="flex-row items-center gap-5">
+      <View className={compactLayout ? "gap-5" : "flex-row items-center gap-5"}>
         <View className="flex-1 gap-4">
           <View className="rounded-[24px] border border-white/10 bg-black/10 p-4">
             <Text className="font-inter text-[11px] uppercase tracking-[1px] text-white/55">
-              Physical → Official OD → Projected
+              Before OD → +Official OD → +Pending OD
             </Text>
-            <View className="mt-3 flex-row items-end gap-2">
-              <AnimatedNumber
-                value={overall.percentBefore}
-                decimals={2}
-                suffix="%"
-                className="font-inter-bold text-xl text-white"
-              />
+            <View
+              className={`mt-3 ${compactLayout ? "flex-row flex-wrap gap-y-2" : "flex-row items-end gap-2"}`}
+            >
+              <View className={compactLayout ? "min-w-[32%] pr-2" : undefined}>
+                <AnimatedNumber
+                  value={overall.percentBefore}
+                  decimals={2}
+                  suffix="%"
+                  className={compactLayout ? "font-inter-bold text-lg text-white" : "font-inter-bold text-xl text-white"}
+                />
+              </View>
               <Text className="pb-1 font-inter-medium text-sm text-white/55">→</Text>
-              <AnimatedNumber
-                value={overall.percentAfterDL}
-                decimals={2}
-                suffix="%"
-                className="font-inter-bold text-xl text-white"
-              />
+              <View className={compactLayout ? "min-w-[32%] pr-2" : undefined}>
+                <AnimatedNumber
+                  value={overall.percentAfterDL}
+                  decimals={2}
+                  suffix="%"
+                  className={compactLayout ? "font-inter-bold text-lg text-white" : "font-inter-bold text-xl text-white"}
+                />
+              </View>
               <Text className="pb-1 font-inter-medium text-sm text-white/55">→</Text>
-              <AnimatedNumber
-                value={overall.percentProjected}
-                decimals={2}
-                suffix="%"
-                className="font-inter-bold text-xl text-white"
-              />
+              <View className={compactLayout ? "min-w-[32%]" : undefined}>
+                <AnimatedNumber
+                  value={overall.percentProjected}
+                  decimals={2}
+                  suffix="%"
+                  className={compactLayout ? "font-inter-bold text-lg text-white" : "font-inter-bold text-xl text-white"}
+                />
+              </View>
             </View>
           </View>
 
           <View>
             <ProgressBar progress={overall.percentProjected} color={accentColor} />
             <View className="mt-2 flex-row justify-between">
-              <Text className="font-inter text-xs text-white/55">Physical</Text>
-              <Text className="font-inter text-xs text-white/55">+Official OD</Text>
-              <Text className="font-inter text-xs text-white/55">+Projected</Text>
+              <Text className="font-inter text-xs text-white/55">Before</Text>
+              <Text className="font-inter text-xs text-white/55">+Official</Text>
+              <Text className="font-inter text-xs text-white/55">+Pending</Text>
             </View>
           </View>
         </View>
 
-        <CircularProgress progress={overall.percentProjected} color={accentColor} />
+        <View className={compactLayout ? "items-center self-center" : undefined}>
+          <CircularProgress progress={overall.percentProjected} color={accentColor} />
+        </View>
       </View>
     </GradientCard>
   );

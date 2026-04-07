@@ -97,6 +97,16 @@ export const getCurrentAppVersion = (): string =>
 export const getReleaseManifestUrl = (): string =>
   getUpdatesExtraConfig().releaseManifestUrl ?? "";
 
+export const getConfiguredUpdateUrl = (): string | undefined => {
+  const updatesConfig = getUpdatesExtraConfig();
+
+  if (Platform.OS === "android") {
+    return updatesConfig.androidApkUrl;
+  }
+
+  return updatesConfig.iosStoreUrl;
+};
+
 const normalizeManifest = (value: unknown): ReleaseManifest => {
   if (!isRecord(value)) {
     throw new Error("Release manifest is invalid.");
@@ -121,13 +131,37 @@ const normalizeManifest = (value: unknown): ReleaseManifest => {
 };
 
 export const resolveUpdateUrl = (manifest: ReleaseManifest): string | undefined => {
-  const updatesConfig = getUpdatesExtraConfig();
+  return manifest.apkUrl ?? manifest.iosStoreUrl ?? getConfiguredUpdateUrl();
+};
 
-  if (Platform.OS === "android") {
-    return manifest.apkUrl ?? updatesConfig.androidApkUrl;
+const buildDirectDownloadFallbackResult = ({
+  currentVersion,
+  manifestUrl,
+  errorMessage,
+}: {
+  currentVersion: string;
+  manifestUrl: string;
+  errorMessage: string;
+}): AppUpdateResult => {
+  const configuredUpdateUrl = getConfiguredUpdateUrl();
+
+  if (configuredUpdateUrl) {
+    return {
+      currentVersion,
+      manifestUrl,
+      isUpdateAvailable: false,
+      isForceUpdate: false,
+      updateUrl: configuredUpdateUrl,
+    };
   }
 
-  return manifest.iosStoreUrl ?? updatesConfig.iosStoreUrl;
+  return {
+    currentVersion,
+    manifestUrl,
+    isUpdateAvailable: false,
+    isForceUpdate: false,
+    error: errorMessage,
+  };
 };
 
 export const checkForAppUpdate = async (): Promise<AppUpdateResult> => {
@@ -135,13 +169,11 @@ export const checkForAppUpdate = async (): Promise<AppUpdateResult> => {
   const currentVersion = getCurrentAppVersion();
 
   if (!manifestUrl) {
-    return {
+    return buildDirectDownloadFallbackResult({
       currentVersion,
       manifestUrl: "",
-      isUpdateAvailable: false,
-      isForceUpdate: false,
-      error: "Release manifest URL is not configured.",
-    };
+      errorMessage: "Release manifest URL is not configured.",
+    });
   }
 
   try {
@@ -153,7 +185,11 @@ export const checkForAppUpdate = async (): Promise<AppUpdateResult> => {
     });
 
     if (!response.ok) {
-      throw new Error(`Unable to read release manifest (${response.status})`);
+      return buildDirectDownloadFallbackResult({
+        currentVersion,
+        manifestUrl,
+        errorMessage: `Unable to read release manifest (${response.status})`,
+      });
     }
 
     const manifest = normalizeManifest((await response.json()) as unknown);
@@ -173,13 +209,10 @@ export const checkForAppUpdate = async (): Promise<AppUpdateResult> => {
     const message =
       error instanceof Error ? error.message : "Could not check app updates.";
 
-    return {
+    return buildDirectDownloadFallbackResult({
       currentVersion,
       manifestUrl,
-      isUpdateAvailable: false,
-      isForceUpdate: false,
-      error: message,
-    };
+      errorMessage: message,
+    });
   }
 };
-

@@ -2,6 +2,7 @@ import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";
 import * as Clipboard from "expo-clipboard";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import Constants from "expo-constants";
 import { router } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
@@ -158,32 +159,49 @@ export default function SettingsScreen() {
     showLatestToast?: boolean;
   } = {}): Promise<void> => {
     setCheckingUpdates(true);
-    const result = await checkForAppUpdate();
-    setUpdateCheck(result);
 
-    if (result.error) {
-      setToastMessage(result.error);
-      await triggerWarningHaptic();
-      setTimeout(() => setToastMessage(""), 2200);
-      setCheckingUpdates(false);
-      return;
-    }
+    try {
+      const result = await checkForAppUpdate();
+      setUpdateCheck(result);
 
-    if (result.isForceUpdate) {
-      setToastMessage("Mandatory update available. Please update to continue safely.");
-      await triggerWarningHaptic();
-      setTimeout(() => setToastMessage(""), 2600);
-      setCheckingUpdates(false);
-      return;
-    }
+      if (result.error) {
+        setToastMessage(result.error);
+        await triggerWarningHaptic();
+        setTimeout(() => setToastMessage(""), 2200);
+        return;
+      }
 
-    if (showLatestToast && !result.isUpdateAvailable) {
+      if (result.isForceUpdate) {
+        setToastMessage("Mandatory update available. Please update to continue safely.");
+        await triggerWarningHaptic();
+        setTimeout(() => setToastMessage(""), 2600);
+        return;
+      }
+
+      if (!showLatestToast) {
+        return;
+      }
+
+      if (result.isUpdateAvailable) {
+        setToastMessage("New update available.");
+        await triggerSuccessHaptic();
+        setTimeout(() => setToastMessage(""), 1800);
+        return;
+      }
+
+      if (result.updateUrl && !result.manifest) {
+        setToastMessage("Direct APK link is ready.");
+        await triggerSuccessHaptic();
+        setTimeout(() => setToastMessage(""), 1800);
+        return;
+      }
+
       setToastMessage("You are already on the latest version.");
       await triggerSuccessHaptic();
       setTimeout(() => setToastMessage(""), 1800);
+    } finally {
+      setCheckingUpdates(false);
     }
-
-    setCheckingUpdates(false);
   };
 
   useEffect(() => {
@@ -205,7 +223,7 @@ export default function SettingsScreen() {
       await Linking.openURL(updateUrl);
       setToastMessage(
         Platform.OS === "android"
-          ? "APK download started in browser/download manager."
+          ? "Latest APK opened in browser/download manager."
           : "Opening update page.",
       );
       await triggerSuccessHaptic();
@@ -242,7 +260,7 @@ export default function SettingsScreen() {
       setTimeout(() => setToastMessage(""), 1800);
     } catch {
       setUpiQrVisible(true);
-      setToastMessage("UPI app not available. Showing QR fallback.");
+      setToastMessage("UPI app not available. Showing QR.");
       await triggerWarningHaptic();
       setTimeout(() => setToastMessage(""), 2200);
     }
@@ -1052,6 +1070,11 @@ export default function SettingsScreen() {
           <Text className="mt-1 font-inter text-sm text-white/65">
             Latest release: {updateCheck?.manifest?.latestVersion ?? "Unknown"}
           </Text>
+          {!updateCheck?.manifest && updateCheck?.updateUrl ? (
+            <Text className="mt-2 font-inter text-xs leading-5 text-white/55">
+              Release manifest is unavailable, direct APK link mode is active.
+            </Text>
+          ) : null}
           {updateCheck?.manifest?.notes ? (
             <Text className="mt-2 font-inter text-xs leading-5 text-white/55">
               {updateCheck.manifest.notes}
@@ -1080,12 +1103,12 @@ export default function SettingsScreen() {
             </Button>
             <Button
               mode="contained-tonal"
-              disabled={!updateCheck?.isUpdateAvailable}
+              disabled={!updateCheck?.updateUrl}
               onPress={() => {
                 void openUpdateDownload();
               }}
             >
-              Download update
+              Download latest APK
             </Button>
           </View>
         </View>
@@ -1108,39 +1131,80 @@ export default function SettingsScreen() {
               keshav jha
             </Text>
           </Text>
-          <Text className="mt-3 font-inter text-sm text-white/65">
-            Support the app with a quick UPI tip.
+          <Text className="mt-1 font-inter text-sm text-white/65">
+            Checkout my portfolio{" "}
+            <Text
+              className="font-inter-semibold"
+              style={{ color: "#60a5fa" }}
+              onPress={async () => {
+                await triggerTapHaptic();
+                await Linking.openURL("https://portfolio-keshav.vercel.app");
+              }}
+            >
+              portfolio-keshav.vercel.app
+            </Text>
           </Text>
-          <Text className="mt-1 font-inter text-xs text-white/45">
-            If I am making life easy for you, help keep my caffeine active for public welfare.
-          </Text>
-          <Button
-            mode="contained-tonal"
-            style={{ marginTop: 12 }}
-            onPress={() => {
-              void openCreatorUPIPayment();
+          <View
+            className="mt-4 rounded-2xl border p-4"
+            style={{
+              borderColor: "rgba(245, 158, 11, 0.35)",
+              backgroundColor: "rgba(245, 158, 11, 0.08)",
             }}
           >
-            Buy me a coffee (UPI)
-          </Button>
-          <Button
-            mode="text"
-            style={{ marginTop: 8 }}
-            onPress={async () => {
-              await triggerTapHaptic();
-              setUpiQrVisible(true);
-            }}
-          >
-            Show QR fallback
-          </Button>
+            <View className="flex-row items-center">
+              <MaterialCommunityIcons name="coffee" size={22} color="#f59e0b" />
+              <Text className="ml-2 font-inter-bold text-base text-[#fde68a]">
+                Buy Me A Coffee
+              </Text>
+            </View>
+            <Text className="mt-2 font-inter-semibold text-sm leading-6 text-white/90">
+              If AttendX is saving your attendance, fuel the developer once in a while.
+            </Text>
+            <Text className="mt-1 font-inter text-xs leading-5 text-white/65">
+              No pressure. But caffeine definitely improves bug-fix speed.
+            </Text>
+            <Button
+              mode="contained"
+              icon="coffee"
+              buttonColor="#f59e0b"
+              textColor="#0a0f1e"
+              style={{ marginTop: 12 }}
+              onPress={() => {
+                void openCreatorUPIPayment();
+              }}
+            >
+              Send coffee via UPI
+            </Button>
+            <Button
+              mode="text"
+              icon="qrcode"
+              style={{ marginTop: 8 }}
+              onPress={async () => {
+                await triggerTapHaptic();
+                setUpiQrVisible(true);
+              }}
+            >
+              Show UPI QR
+            </Button>
+          </View>
           <Button
             mode="outlined"
             style={{ marginTop: 16 }}
             onPress={async () => {
               await triggerTapHaptic();
               await Share.share({
-                message:
+                message: [
                   "AttendX helps you track physical attendance, official OD, and projected recovery in one place.",
+                  "",
+                  "Follow updates:",
+                  "https://github.com/shreshav2404-code/attendance-master-/releases",
+                  "",
+                  "Checkout my portfolio:",
+                  "https://portfolio-keshav.vercel.app",
+                  "",
+                  "Instagram:",
+                  "https://instagram.com/the_jha_keshav2404",
+                ].join("\n"),
               });
               await triggerSuccessHaptic();
             }}
@@ -1151,12 +1215,12 @@ export default function SettingsScreen() {
       </ScrollView>
       <BottomSheet
         visible={upiQrVisible}
-        title="UPI QR Fallback"
+        title="UPI QR"
         onClose={() => setUpiQrVisible(false)}
       >
         <View className="items-center">
           <Text className="mb-3 text-center font-inter text-sm text-white/70">
-            Scan this QR if your UPI app chooser does not open.
+            Scan this QR to pay with any UPI app.
           </Text>
           <Image
             source={require("../../assets/images/upi-keshav-qr.jpeg")}
@@ -1183,9 +1247,9 @@ export default function SettingsScreen() {
             <Button
               mode="outlined"
               style={{ flex: 1 }}
-              onPress={async () => {
-                await triggerTapHaptic();
+              onPress={() => {
                 setUpiQrVisible(false);
+                void triggerTapHaptic();
               }}
             >
               Close

@@ -61,12 +61,12 @@ export const SUBJECT_COLOR_PALETTE = [
 export const DEFAULT_HOUR_SLOTS: HourSlot[] = [
   { hour: 1, startTime: "08:50", endTime: "09:45", isBreak: false, isLunch: false },
   { hour: 2, startTime: "09:45", endTime: "10:40", isBreak: false, isLunch: false },
-  { hour: 3, startTime: "10:55", endTime: "11:50", isBreak: false, isLunch: false },
-  { hour: 4, startTime: "11:50", endTime: "12:45", isBreak: false, isLunch: false },
-  { hour: 5, startTime: "13:30", endTime: "14:25", isBreak: false, isLunch: false },
-  { hour: 6, startTime: "14:25", endTime: "15:20", isBreak: false, isLunch: false },
-  { hour: 7, startTime: "15:35", endTime: "16:30", isBreak: false, isLunch: false },
-  { hour: 8, startTime: "16:30", endTime: "17:25", isBreak: false, isLunch: false },
+  { hour: 3, startTime: "10:50", endTime: "11:45", isBreak: true, isLunch: false },
+  { hour: 4, startTime: "11:45", endTime: "12:35", isBreak: false, isLunch: false },
+  { hour: 5, startTime: "12:35", endTime: "13:25", isBreak: false, isLunch: true },
+  { hour: 6, startTime: "13:25", endTime: "14:20", isBreak: false, isLunch: false },
+  { hour: 7, startTime: "14:30", endTime: "15:25", isBreak: true, isLunch: false },
+  { hour: 8, startTime: "15:25", endTime: "16:15", isBreak: false, isLunch: false },
 ];
 
 export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {

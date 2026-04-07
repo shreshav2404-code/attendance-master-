@@ -23,7 +23,6 @@ export default function ODTabScreen() {
     odEvents,
     addODEvent,
     removeODEvent,
-    setEventSubjectRegistration,
   } = useODEvents();
   const { addLogs, removeLogsByODEvent } = useDailyLog();
   const [sheetVisible, setSheetVisible] = useState(false);
@@ -111,15 +110,21 @@ export default function ODTabScreen() {
                 subjects={subjects}
                 onPress={() => router.push(`/od/${event.id}`)}
                 onDelete={async () => {
+                  const removedTracked = event.subjects.reduce(
+                    (sum, subject) => sum + subject.hours,
+                    0,
+                  );
+                  const removedRegistered = event.subjects
+                    .filter((subject) => subject.registered)
+                    .reduce((sum, subject) => sum + subject.hours, 0);
+
                   await triggerWarningHaptic();
-                  await removeODEvent(event.id);
                   await removeLogsByODEvent(event.id);
-                  setToastMessage("OD event deleted");
+                  await removeODEvent(event.id);
+                  setToastMessage(
+                    `OD deleted · -${removedTracked}h tracked, -${removedRegistered}h official`,
+                  );
                   setTimeout(() => setToastMessage(""), 1800);
-                }}
-                onToggleRegistration={(subjectId, registered) => {
-                  void triggerTapHaptic();
-                  void setEventSubjectRegistration(event.id, subjectId, registered);
                 }}
               />
             ))}

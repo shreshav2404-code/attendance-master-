@@ -1,7 +1,7 @@
 import { Trash2 } from "lucide-react-native";
 import Swipeable from "react-native-gesture-handler/ReanimatedSwipeable";
 import { Pressable, Text, View } from "react-native";
-import { Button, Switch } from "react-native-paper";
+import { Button } from "react-native-paper";
 
 import type { ODEvent, Subject } from "@/types";
 
@@ -10,7 +10,6 @@ interface ODEventCardProps {
   subjects: Subject[];
   onPress: () => void;
   onDelete: () => void;
-  onToggleRegistration: (subjectId: string, registered: boolean) => void;
 }
 
 export const ODEventCard = ({
@@ -18,7 +17,6 @@ export const ODEventCard = ({
   subjects,
   onPress,
   onDelete,
-  onToggleRegistration,
 }: ODEventCardProps) => {
   const subjectLookup = new Map(subjects.map((subject) => [subject.id, subject]));
   const registeredHours = event.subjects
@@ -74,12 +72,21 @@ export const ODEventCard = ({
                     {subject.registered ? "Registered" : "Pending"}
                   </Text>
                 </View>
-                <Switch
-                  value={subject.registered}
-                  onValueChange={(registered) =>
-                    onToggleRegistration(subject.subjectId, registered)
-                  }
-                />
+                <View
+                  className={`rounded-full px-3 py-1 ${
+                    subject.registered
+                      ? "bg-emerald-500/20 border border-emerald-400/30"
+                      : "bg-amber-500/20 border border-amber-300/30"
+                  }`}
+                >
+                  <Text
+                    className={`font-inter text-[11px] ${
+                      subject.registered ? "text-emerald-200" : "text-amber-100"
+                    }`}
+                  >
+                    {subject.registered ? "Registered" : "Pending"}
+                  </Text>
+                </View>
               </View>
             );
           })}
