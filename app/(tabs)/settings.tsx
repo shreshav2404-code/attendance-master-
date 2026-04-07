@@ -129,6 +129,15 @@ export default function SettingsScreen() {
     [workingDateOverrides],
   );
   const currentAppVersion = useMemo(() => getCurrentAppVersion(), []);
+  const latestReleaseLabel = useMemo(() => {
+    if (updateCheck?.manifest?.latestVersion) {
+      return updateCheck.manifest.latestVersion;
+    }
+    if (updateCheck?.updateUrl) {
+      return "Direct APK link";
+    }
+    return "Unknown";
+  }, [updateCheck]);
 
   useEffect(() => {
     setProfile({
@@ -1068,7 +1077,7 @@ export default function SettingsScreen() {
             Current version: {currentAppVersion}
           </Text>
           <Text className="mt-1 font-inter text-sm text-white/65">
-            Latest release: {updateCheck?.manifest?.latestVersion ?? "Unknown"}
+            Latest release: {latestReleaseLabel}
           </Text>
           {!updateCheck?.manifest && updateCheck?.updateUrl ? (
             <Text className="mt-2 font-inter text-xs leading-5 text-white/55">

@@ -1,7 +1,8 @@
 {
   "latestVersion": "8.0.10",
   "minimumVersion": "7.0.0",
-  "apkUrl": "https://github.com/shreshav2404-code/attendance-master-/releases/latest/download/attendx-latest.apk",
+  "apkUrl": "https://expo.dev/artifacts/eas/eVp6xLAXN2fDNWaPTTWgaf.apk",
   "iosStoreUrl": "",
-  "notes": "AttendX 8.0.10 release"
+  "notes": "AttendX 8.0.10 release",
+  "publishedAt": "2026-04-07T23:18:15+05:30"
 }
