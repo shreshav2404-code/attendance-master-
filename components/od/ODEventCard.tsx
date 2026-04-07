@@ -1,5 +1,5 @@
 import { Trash2 } from "lucide-react-native";
-import Swipeable from "react-native-gesture-handler/ReanimatedSwipeable";
+import Swipeable from "react-native-gesture-handler/Swipeable";
 import { Pressable, Text, View } from "react-native";
 import { Button } from "react-native-paper";
 
@@ -28,9 +28,14 @@ export const ODEventCard = ({
 
   return (
     <Swipeable
+      overshootRight={false}
+      friction={2}
+      rightThreshold={52}
+      containerStyle={{ marginBottom: 16, borderRadius: 28, overflow: "hidden" }}
       renderRightActions={() => (
         <Pressable
-          className="ml-3 items-center justify-center rounded-[24px] bg-red-600 px-5"
+          className="items-center justify-center bg-red-600"
+          style={{ width: 82 }}
           onPress={onDelete}
         >
           <Trash2 color="#fff" size={18} />
@@ -38,7 +43,7 @@ export const ODEventCard = ({
       )}
     >
       <Pressable
-        className="mb-4 rounded-[28px] border border-white/10 bg-white/5 p-4"
+        className="rounded-[28px] border border-white/10 bg-white/5 p-4"
         onPress={onPress}
       >
         <View className="flex-row items-start justify-between">

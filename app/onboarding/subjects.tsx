@@ -11,6 +11,7 @@ import { z } from "zod";
 
 import { ProgressBar } from "@/components/shared/ProgressBar";
 import { SubjectBadge } from "@/components/shared/SubjectBadge";
+import { Toast } from "@/components/shared/Toast";
 import { SUBJECT_COLOR_PALETTE } from "@/lib/constants";
 import { triggerSuccessHaptic, triggerTapHaptic, triggerWarningHaptic } from "@/lib/haptics";
 import {
@@ -54,6 +55,7 @@ export default function SubjectsScreen() {
   const [importSummary, setImportSummary] = useState("");
   const [importError, setImportError] = useState("");
   const [showSyncReminder, setShowSyncReminder] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
 
   const submit = handleSubmit(async (values) => {
     await triggerTapHaptic();
@@ -125,6 +127,10 @@ export default function SubjectsScreen() {
         `Imported ${totalMapped} subjects${studentLabel}. Matched ${matchedCount}, added ${createdCount} new subjects.`,
       );
       setShowSyncReminder(true);
+      setToastMessage(
+        "Subjects imported. Next: Settings -> Sync Official Report -> Compare and apply.",
+      );
+      setTimeout(() => setToastMessage(""), 2600);
       await triggerSuccessHaptic();
     } catch (error) {
       setImportError(
@@ -140,6 +146,7 @@ export default function SubjectsScreen() {
 
   return (
     <ScrollView className="flex-1 bg-background" contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
+      <Toast visible={Boolean(toastMessage)} message={toastMessage} type="warning" />
       <Text className="font-inter text-sm uppercase tracking-[1.2px] text-white/50">
         Step 3 of 5
       </Text>
