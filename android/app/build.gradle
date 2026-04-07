@@ -92,8 +92,8 @@ android {
         applicationId 'com.attendx.mobile'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 8010
-        versionName "8.0.10"
+        versionCode 9010
+        versionName "9.0.1"
     }
     signingConfigs {
         debug {

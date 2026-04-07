@@ -1,8 +1,8 @@
 {
-  "latestVersion": "8.0.10",
-  "minimumVersion": "7.0.0",
+  "latestVersion": "9.0.1",
+  "minimumVersion": "8.0.10",
   "apkUrl": "https://expo.dev/artifacts/eas/eVp6xLAXN2fDNWaPTTWgaf.apk",
   "iosStoreUrl": "",
-  "notes": "AttendX 8.0.10 release",
-  "publishedAt": "2026-04-07T23:18:15+05:30"
+  "notes": "AttendX 9.0.1 release",
+  "publishedAt": "2026-04-08T00:00:00+05:30"
 }
