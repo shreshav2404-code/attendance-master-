@@ -98,6 +98,33 @@ const getRegisteredODHours = (subjectId: string, odEvents: ODEvent[]): number =>
     return total + registeredHours;
   }, 0);
 
+const getRegisteredODHoursSinceSync = ({
+  subjectId,
+  odEvents,
+  syncedAt,
+}: {
+  subjectId: string;
+  odEvents: ODEvent[];
+  syncedAt: string;
+}): number =>
+  odEvents.reduce((total, event) => {
+    const registeredHours = event.subjects
+      .filter((subject) => {
+        if (subject.subjectId !== subjectId || !subject.registered) {
+          return false;
+        }
+
+        if (subject.registeredAt) {
+          return subject.registeredAt > syncedAt;
+        }
+
+        return event.createdAt > syncedAt;
+      })
+      .reduce((sum, subject) => sum + subject.hours, 0);
+
+    return total + registeredHours;
+  }, 0);
+
 export const calculateAttendanceSummary = ({
   student,
   subject,
@@ -114,27 +141,62 @@ export const calculateAttendanceSummary = ({
   officialSyncSnapshotBySubject?: OfficialSyncSnapshotBySubject;
 }): AttendanceSummary => {
   const subjectLogs = logs.filter((log) => log.subjectId === subject.id);
-  const calculatedTH = subjectLogs.reduce(
-    (sum, log) => (log.status === "suspended" ? sum : sum + log.hours),
-    0,
-  );
-  const calculatedAH = subjectLogs.reduce(
-    (sum, log) => (log.status === "present" ? sum + log.hours : sum),
-    0,
-  );
-  const trackedODHours = subjectLogs.reduce(
-    (sum, log) => (log.status === "od" ? sum + log.hours : sum),
-    0,
-  );
-  const calculatedDL = Math.min(
-    trackedODHours,
-    getRegisteredODHours(subject.id, odEvents),
-  );
   const officialSnapshot = officialSyncSnapshotBySubject?.[subject.id];
-  const TH = Math.max(calculatedTH, officialSnapshot?.TH ?? 0);
-  const AH = Math.max(calculatedAH, officialSnapshot?.AH ?? 0);
-  const DL = Math.max(calculatedDL, officialSnapshot?.DL ?? 0);
-  const pendingOD = Math.max(0, trackedODHours - DL);
+  let TH = 0;
+  let AH = 0;
+  let DL = 0;
+  let pendingOD = 0;
+
+  if (officialSnapshot) {
+    const postSyncLogs = subjectLogs.filter(
+      (log) => !log.createdAt || log.createdAt > officialSnapshot.syncedAt,
+    );
+    const postSyncTH = postSyncLogs.reduce(
+      (sum, log) => (log.status === "suspended" ? sum : sum + log.hours),
+      0,
+    );
+    const postSyncAH = postSyncLogs.reduce(
+      (sum, log) => (log.status === "present" ? sum + log.hours : sum),
+      0,
+    );
+    const trackedODPostSync = postSyncLogs.reduce(
+      (sum, log) => (log.status === "od" ? sum + log.hours : sum),
+      0,
+    );
+    const registeredODPostSync = getRegisteredODHoursSinceSync({
+      subjectId: subject.id,
+      odEvents,
+      syncedAt: officialSnapshot.syncedAt,
+    });
+
+    TH = officialSnapshot.TH + postSyncTH;
+    AH = officialSnapshot.AH + postSyncAH;
+    DL = officialSnapshot.DL + registeredODPostSync;
+    pendingOD = Math.max(0, trackedODPostSync - registeredODPostSync);
+  } else {
+    const calculatedTH = subjectLogs.reduce(
+      (sum, log) => (log.status === "suspended" ? sum : sum + log.hours),
+      0,
+    );
+    const calculatedAH = subjectLogs.reduce(
+      (sum, log) => (log.status === "present" ? sum + log.hours : sum),
+      0,
+    );
+    const trackedODHours = subjectLogs.reduce(
+      (sum, log) => (log.status === "od" ? sum + log.hours : sum),
+      0,
+    );
+    const calculatedDL = Math.min(
+      trackedODHours,
+      getRegisteredODHours(subject.id, odEvents),
+    );
+
+    TH = calculatedTH;
+    AH = calculatedAH;
+    DL = calculatedDL;
+    pendingOD = Math.max(0, trackedODHours - DL);
+  }
+
   const AH_DL = AH + DL;
   const AH_allOD = AH_DL + pendingOD;
   const percentBefore = calculatePercentage(AH, TH);

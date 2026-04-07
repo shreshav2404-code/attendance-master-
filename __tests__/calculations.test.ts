@@ -236,6 +236,93 @@ describe("calculations", () => {
     expect(summary.percentAfterDL).toBe(78.13);
   });
 
+  it("calculateAttendanceSummary adds post-sync logs on top of official snapshot", () => {
+    const summary = calculateAttendanceSummary({
+      student,
+      subject: subjects[0]!,
+      logs: [
+        {
+          id: "post-sync-present",
+          date: "2026-04-06",
+          subjectId: "ml",
+          status: "present",
+          hours: 1,
+          createdAt: "2026-04-06T09:00:00.000Z",
+        },
+        {
+          id: "post-sync-od",
+          date: "2026-04-06",
+          subjectId: "ml",
+          status: "od",
+          hours: 2,
+          odEventId: "od-post",
+          createdAt: "2026-04-06T10:00:00.000Z",
+        },
+      ],
+      odEvents: [
+        {
+          id: "od-post",
+          name: "Post sync event",
+          date: "2026-04-06",
+          reason: "Club activity",
+          type: "club",
+          createdAt: "2026-04-06T08:00:00.000Z",
+          subjects: [
+            {
+              subjectId: "ml",
+              hours: 2,
+              registered: true,
+              registeredAt: "2026-04-06T11:00:00.000Z",
+            },
+          ],
+        },
+      ],
+      officialSyncSnapshotBySubject: {
+        ml: {
+          TH: 32,
+          AH: 24,
+          DL: 1,
+          syncedAt: "2026-04-05T00:00:00.000Z",
+        },
+      },
+    });
+
+    expect(summary.TH).toBe(35);
+    expect(summary.AH).toBe(25);
+    expect(summary.DL).toBe(3);
+    expect(summary.pendingOD).toBe(0);
+  });
+
+  it("calculateAttendanceSummary ignores pre-sync logs when official snapshot exists", () => {
+    const summary = calculateAttendanceSummary({
+      student,
+      subject: subjects[0]!,
+      logs: [
+        {
+          id: "pre-sync-present",
+          date: "2026-04-03",
+          subjectId: "ml",
+          status: "present",
+          hours: 1,
+          createdAt: "2026-04-03T09:00:00.000Z",
+        },
+      ],
+      odEvents: [],
+      officialSyncSnapshotBySubject: {
+        ml: {
+          TH: 32,
+          AH: 24,
+          DL: 1,
+          syncedAt: "2026-04-05T00:00:00.000Z",
+        },
+      },
+    });
+
+    expect(summary.TH).toBe(32);
+    expect(summary.AH).toBe(24);
+    expect(summary.DL).toBe(1);
+  });
+
   it("calculateAttendanceSummary keeps unregistered OD as pending", () => {
     const pendingOnlySummary = calculateAttendanceSummary({
       student,
