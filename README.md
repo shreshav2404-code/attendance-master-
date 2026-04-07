@@ -73,6 +73,24 @@ eas build --platform ios --profile preview             # IPA (internal testing)
 eas build --platform ios --profile production          # App Store build
 ```
 
+## In-App APK Update Flow
+
+AttendX checks a public release manifest and compares versions in Settings.
+
+1. Update `release.json`:
+   - `latestVersion`
+   - `minimumVersion`
+   - `apkUrl` (new APK link)
+2. Publish it:
+```bash
+powershell -ExecutionPolicy Bypass -File .\scripts\publish-release-manifest.ps1
+```
+3. Users tap `Settings -> Check for updates -> Download latest APK`.
+
+Notes:
+- Android update installs are user-confirmed through package installer.
+- If package installer does not open automatically, the app falls back to APK share/open flow.
+
 ## Release Dry-Run Checklist
 
 ```bash

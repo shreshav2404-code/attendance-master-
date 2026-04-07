@@ -104,6 +104,8 @@ export default function SettingsScreen() {
   const [upiQrVisible, setUpiQrVisible] = useState(false);
   const [updateCheck, setUpdateCheck] = useState<AppUpdateResult | null>(null);
   const [checkingUpdates, setCheckingUpdates] = useState(false);
+  const [downloadingUpdate, setDownloadingUpdate] = useState(false);
+  const [updateDownloadProgress, setUpdateDownloadProgress] = useState(0);
   const [saturdayDate, setSaturdayDate] = useState(getTodayKey());
   const [saturdayWorking, setSaturdayWorking] = useState(true);
   const [profile, setProfile] = useState({
@@ -228,19 +230,82 @@ export default function SettingsScreen() {
       return;
     }
 
+    if (Platform.OS !== "android") {
+      try {
+        await Linking.openURL(updateUrl);
+        setToastMessage("Opening update page.");
+        await triggerSuccessHaptic();
+        setTimeout(() => setToastMessage(""), 2200);
+      } catch {
+        setToastMessage("Unable to open update link.");
+        await triggerWarningHaptic();
+        setTimeout(() => setToastMessage(""), 2200);
+      }
+      return;
+    }
+
     try {
-      await Linking.openURL(updateUrl);
-      setToastMessage(
-        Platform.OS === "android"
-          ? "Latest APK opened in browser/download manager."
-          : "Opening update page.",
+      setDownloadingUpdate(true);
+      setUpdateDownloadProgress(0);
+
+      const baseDirectory = FileSystem.cacheDirectory ?? FileSystem.documentDirectory;
+      if (!baseDirectory) {
+        throw new Error("Local storage is unavailable for update download.");
+      }
+
+      const targetUri = `${baseDirectory}attendx-update-${Date.now()}.apk`;
+      const downloadTask = FileSystem.createDownloadResumable(
+        updateUrl,
+        targetUri,
+        {},
+        (progress) => {
+          if (progress.totalBytesExpectedToWrite <= 0) {
+            return;
+          }
+          setUpdateDownloadProgress(
+            progress.totalBytesWritten / progress.totalBytesExpectedToWrite,
+          );
+        },
       );
+
+      const result = await downloadTask.downloadAsync();
+      if (!result || result.status < 200 || result.status >= 300) {
+        throw new Error("APK download failed.");
+      }
+
+      let openedInstaller = false;
+      try {
+        const contentUri = await FileSystem.getContentUriAsync(result.uri);
+        await Linking.openURL(contentUri);
+        openedInstaller = true;
+      } catch {}
+
+      if (!openedInstaller) {
+        try {
+          await Linking.openURL(result.uri);
+          openedInstaller = true;
+        } catch {}
+      }
+
+      if (!openedInstaller) {
+        await Sharing.shareAsync(result.uri, {
+          mimeType: "application/vnd.android.package-archive",
+          dialogTitle: "Install AttendX update",
+        });
+      }
+
+      setToastMessage("APK downloaded. Continue install from package installer.");
       await triggerSuccessHaptic();
       setTimeout(() => setToastMessage(""), 2200);
-    } catch {
-      setToastMessage("Unable to open update link.");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unable to download update.";
+      setToastMessage(message);
       await triggerWarningHaptic();
       setTimeout(() => setToastMessage(""), 2200);
+    } finally {
+      setDownloadingUpdate(false);
+      setUpdateDownloadProgress(0);
     }
   };
 
@@ -1112,12 +1177,15 @@ export default function SettingsScreen() {
             </Button>
             <Button
               mode="contained-tonal"
-              disabled={!updateCheck?.updateUrl}
+              loading={downloadingUpdate}
+              disabled={!updateCheck?.updateUrl || downloadingUpdate}
               onPress={() => {
                 void openUpdateDownload();
               }}
             >
-              Download latest APK
+              {downloadingUpdate
+                ? `Downloading ${Math.round(updateDownloadProgress * 100)}%`
+                : "Download latest APK"}
             </Button>
           </View>
         </View>
