@@ -1,7 +1,6 @@
 import { X } from "lucide-react-native";
 import { MotiView } from "moti";
 import { Modal, Pressable, Text, View, useWindowDimensions } from "react-native";
-import { IconButton } from "react-native-paper";
 
 interface BottomSheetProps {
   visible: boolean;
@@ -21,9 +20,10 @@ export const BottomSheet = ({
 
   return (
     <Modal
-      animationType="none"
+      animationType="fade"
       transparent
       visible={visible}
+      statusBarTranslucent
       onRequestClose={onClose}
     >
       <View className="flex-1 justify-end">
@@ -34,7 +34,7 @@ export const BottomSheet = ({
           exit={{ translateY: 360, opacity: 0 }}
           transition={{ type: "spring", damping: 18, stiffness: 180 }}
           className="rounded-t-[32px] border-t border-white/10 bg-surface px-5 pb-10 pt-4"
-          style={{ maxHeight: maxSheetHeight }}
+          style={{ maxHeight: maxSheetHeight, zIndex: 10, elevation: 10 }}
         >
           <View className="mb-4 flex-row items-center justify-between">
             <View className="h-1.5 w-12 rounded-full bg-white/15" />
@@ -45,7 +45,13 @@ export const BottomSheet = ({
             ) : (
               <View />
             )}
-            <IconButton icon={() => <X color="#f8fafc" size={18} />} onPress={onClose} />
+            <Pressable
+              onPress={onClose}
+              hitSlop={10}
+              className="h-9 w-9 items-center justify-center rounded-full bg-white/5"
+            >
+              <X color="#f8fafc" size={18} />
+            </Pressable>
           </View>
           {children}
         </MotiView>

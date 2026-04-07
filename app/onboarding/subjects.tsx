@@ -53,6 +53,7 @@ export default function SubjectsScreen() {
   const [importing, setImporting] = useState(false);
   const [importSummary, setImportSummary] = useState("");
   const [importError, setImportError] = useState("");
+  const [showSyncReminder, setShowSyncReminder] = useState(false);
 
   const submit = handleSubmit(async (values) => {
     await triggerTapHaptic();
@@ -123,6 +124,7 @@ export default function SubjectsScreen() {
       setImportSummary(
         `Imported ${totalMapped} subjects${studentLabel}. Matched ${matchedCount}, added ${createdCount} new subjects.`,
       );
+      setShowSyncReminder(true);
       await triggerSuccessHaptic();
     } catch (error) {
       setImportError(
@@ -276,6 +278,21 @@ export default function SubjectsScreen() {
           <Text className="mt-3 font-inter text-xs leading-5 text-white/65">
             {importSummary}
           </Text>
+        ) : null}
+        {showSyncReminder ? (
+          <View
+            className="mt-3 rounded-2xl border px-3 py-3"
+            style={{
+              borderColor: "rgba(245, 158, 11, 0.35)",
+              backgroundColor: "rgba(245, 158, 11, 0.09)",
+            }}
+          >
+            <Text className="font-inter-semibold text-xs leading-5 text-[#fde68a]">
+              Attendance sync pending: subject import only creates/matches subjects.
+              Re-upload course-wise attendance in Settings and tap Compare and apply
+              to sync TH/AH/DL values.
+            </Text>
+          </View>
         ) : null}
         {importError ? (
           <Text className="mt-2 font-inter text-xs leading-5 text-red-300">
