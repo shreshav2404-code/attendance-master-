@@ -14,12 +14,18 @@ import {
   useSegments,
 } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect, useRef } from "react";
-import { View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { Linking, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { MD3DarkTheme, PaperProvider, ActivityIndicator } from "react-native-paper";
+import {
+  MD3DarkTheme,
+  PaperProvider,
+  ActivityIndicator,
+  Button,
+} from "react-native-paper";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
+import { checkForAppUpdate } from "@/lib/appUpdate";
 import { calculateAttendanceSummaries } from "@/lib/calculations";
 import { COLORS } from "@/lib/constants";
 import {
@@ -84,6 +90,12 @@ export default function RootLayout() {
   const attendanceHydrated = useAttendanceStore((state) => state.hydrated);
   const odHydrated = useODStore((state) => state.hydrated);
   const notificationsGrantedRef = useRef<boolean | null>(null);
+  const [forceUpdateUrl, setForceUpdateUrl] = useState<string | undefined>(
+    undefined,
+  );
+  const [forceUpdateVersion, setForceUpdateVersion] = useState<string | undefined>(
+    undefined,
+  );
 
   useEffect(() => {
     void Promise.all([
@@ -214,22 +226,92 @@ export default function RootLayout() {
     subjects,
   ]);
 
+  useEffect(() => {
+    if (!ready) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const runForceUpdateCheck = async () => {
+      const result = await checkForAppUpdate();
+
+      if (cancelled) {
+        return;
+      }
+
+      if (result.isForceUpdate && result.updateUrl) {
+        setForceUpdateUrl(result.updateUrl);
+        setForceUpdateVersion(result.manifest?.latestVersion);
+        return;
+      }
+
+      setForceUpdateUrl(undefined);
+      setForceUpdateVersion(undefined);
+    };
+
+    void runForceUpdateCheck();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [ready]);
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <PaperProvider theme={paperTheme}>
         <SafeAreaProvider>
           {ready ? (
-            <Stack
-              screenOptions={{
-                headerShown: false,
-                contentStyle: { backgroundColor: COLORS.background },
-              }}
-            >
-              <Stack.Screen name="(tabs)" />
-              <Stack.Screen name="onboarding" />
-              <Stack.Screen name="subject/[id]" />
-              <Stack.Screen name="od/[id]" />
-            </Stack>
+            forceUpdateVersion ? (
+              <View className="flex-1 items-center justify-center bg-background px-6">
+                <Text className="text-center font-inter-bold text-3xl text-white">
+                  Update Required
+                </Text>
+                <Text className="mt-3 text-center font-inter text-sm leading-6 text-white/70">
+                  A mandatory version is available. Please install version{" "}
+                  {forceUpdateVersion} to continue using AttendX.
+                </Text>
+                <Button
+                  mode="contained"
+                  style={{ marginTop: 22 }}
+                  disabled={!forceUpdateUrl}
+                  onPress={async () => {
+                    if (!forceUpdateUrl) {
+                      return;
+                    }
+                    await Linking.openURL(forceUpdateUrl);
+                  }}
+                >
+                  Download Update
+                </Button>
+                <Button
+                  mode="text"
+                  style={{ marginTop: 8 }}
+                  onPress={async () => {
+                    const result = await checkForAppUpdate();
+                    if (!(result.isForceUpdate && result.updateUrl)) {
+                      setForceUpdateUrl(undefined);
+                      setForceUpdateVersion(undefined);
+                    }
+                  }}
+                >
+                  I have updated, retry
+                </Button>
+              </View>
+            ) : (
+              <Stack
+                screenOptions={{
+                  headerShown: false,
+                  contentStyle: { backgroundColor: COLORS.background },
+                }}
+              >
+                <Stack.Screen name="(tabs)" />
+                <Stack.Screen name="onboarding" />
+                <Stack.Screen name="help/index" />
+                <Stack.Screen name="subject/[id]" />
+                <Stack.Screen name="od/[id]" />
+              </Stack>
+            )
           ) : (
             <View className="flex-1 items-center justify-center bg-background">
               <ActivityIndicator animating color={COLORS.secondary} size="large" />

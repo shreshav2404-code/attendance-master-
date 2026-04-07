@@ -76,6 +76,11 @@
       "router": {
         "origin": false
       },
+      "updates": {
+        "releaseManifestUrl": "https://raw.githubusercontent.com/shreshav2404-code/attendance-master-/master/release.json",
+        "androidApkUrl": "https://github.com/shreshav2404-code/attendance-master-/releases/latest/download/attendx-latest.apk",
+        "iosStoreUrl": ""
+      },
       "eas": {
         "projectId": "5516f209-2e04-4055-9d87-8d354a4a1a77"
       }

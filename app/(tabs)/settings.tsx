@@ -5,7 +5,7 @@ import * as Clipboard from "expo-clipboard";
 import Constants from "expo-constants";
 import { router } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { Image, Linking, Share, ScrollView, Text, View } from "react-native";
+import { Image, Linking, Platform, Share, ScrollView, Text, View } from "react-native";
 import { Button, Switch, TextInput } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -23,6 +23,11 @@ import {
   DEFAULT_WORKING_DAYS,
 } from "@/lib/constants";
 import { triggerSuccessHaptic, triggerTapHaptic, triggerWarningHaptic } from "@/lib/haptics";
+import {
+  checkForAppUpdate,
+  getCurrentAppVersion,
+  type AppUpdateResult,
+} from "@/lib/appUpdate";
 import { generateAttendancePdf, shareAttendancePdf } from "@/lib/pdf";
 import { shareAttendanceSummary, buildShareSummary } from "@/lib/share";
 import { clearAllStorage, exportBackup, restoreBackup } from "@/lib/storage";
@@ -96,6 +101,8 @@ export default function SettingsScreen() {
   const [pendingImportLoading, setPendingImportLoading] = useState(false);
   const [pendingImportSummary, setPendingImportSummary] = useState("");
   const [upiQrVisible, setUpiQrVisible] = useState(false);
+  const [updateCheck, setUpdateCheck] = useState<AppUpdateResult | null>(null);
+  const [checkingUpdates, setCheckingUpdates] = useState(false);
   const [saturdayDate, setSaturdayDate] = useState(getTodayKey());
   const [saturdayWorking, setSaturdayWorking] = useState(true);
   const [profile, setProfile] = useState({
@@ -120,6 +127,7 @@ export default function SettingsScreen() {
         .sort(([left], [right]) => left.localeCompare(right)),
     [workingDateOverrides],
   );
+  const currentAppVersion = useMemo(() => getCurrentAppVersion(), []);
 
   useEffect(() => {
     setProfile({
@@ -143,6 +151,71 @@ export default function SettingsScreen() {
 
     setSaturdayWorking(workingDays.includes("Sat"));
   }, [saturdayDate, workingDateOverrides, workingDays]);
+
+  const refreshUpdateCheck = async ({
+    showLatestToast = false,
+  }: {
+    showLatestToast?: boolean;
+  } = {}): Promise<void> => {
+    setCheckingUpdates(true);
+    const result = await checkForAppUpdate();
+    setUpdateCheck(result);
+
+    if (result.error) {
+      setToastMessage(result.error);
+      await triggerWarningHaptic();
+      setTimeout(() => setToastMessage(""), 2200);
+      setCheckingUpdates(false);
+      return;
+    }
+
+    if (result.isForceUpdate) {
+      setToastMessage("Mandatory update available. Please update to continue safely.");
+      await triggerWarningHaptic();
+      setTimeout(() => setToastMessage(""), 2600);
+      setCheckingUpdates(false);
+      return;
+    }
+
+    if (showLatestToast && !result.isUpdateAvailable) {
+      setToastMessage("You are already on the latest version.");
+      await triggerSuccessHaptic();
+      setTimeout(() => setToastMessage(""), 1800);
+    }
+
+    setCheckingUpdates(false);
+  };
+
+  useEffect(() => {
+    void refreshUpdateCheck();
+  }, []);
+
+  const openUpdateDownload = async (): Promise<void> => {
+    await triggerTapHaptic();
+
+    const updateUrl = updateCheck?.updateUrl;
+    if (!updateUrl) {
+      setToastMessage("Update link unavailable. Configure release manifest first.");
+      await triggerWarningHaptic();
+      setTimeout(() => setToastMessage(""), 2400);
+      return;
+    }
+
+    try {
+      await Linking.openURL(updateUrl);
+      setToastMessage(
+        Platform.OS === "android"
+          ? "APK download started in browser/download manager."
+          : "Opening update page.",
+      );
+      await triggerSuccessHaptic();
+      setTimeout(() => setToastMessage(""), 2200);
+    } catch {
+      setToastMessage("Unable to open update link.");
+      await triggerWarningHaptic();
+      setTimeout(() => setToastMessage(""), 2200);
+    }
+  };
 
   const openCreatorUPIPayment = async (): Promise<void> => {
     await triggerTapHaptic();
@@ -948,6 +1021,71 @@ export default function SettingsScreen() {
               }}
             >
               Clear all data
+            </Button>
+          </View>
+        </View>
+
+        <View className="mt-6 rounded-[28px] border border-white/10 bg-white/5 p-4">
+          <Text className="font-inter-bold text-lg text-white">
+            Help & User Manual
+          </Text>
+          <Text className="mt-2 font-inter text-sm leading-6 text-white/65">
+            Step-by-step setup and daily workflow guide for new users.
+          </Text>
+          <Button
+            mode="outlined"
+            style={{ marginTop: 14 }}
+            onPress={async () => {
+              await triggerTapHaptic();
+              router.push("../help");
+            }}
+          >
+            Open user manual
+          </Button>
+        </View>
+
+        <View className="mt-6 rounded-[28px] border border-white/10 bg-white/5 p-4">
+          <Text className="font-inter-bold text-lg text-white">App updates</Text>
+          <Text className="mt-2 font-inter text-sm text-white/65">
+            Current version: {currentAppVersion}
+          </Text>
+          <Text className="mt-1 font-inter text-sm text-white/65">
+            Latest release: {updateCheck?.manifest?.latestVersion ?? "Unknown"}
+          </Text>
+          {updateCheck?.manifest?.notes ? (
+            <Text className="mt-2 font-inter text-xs leading-5 text-white/55">
+              {updateCheck.manifest.notes}
+            </Text>
+          ) : null}
+          {updateCheck?.isForceUpdate ? (
+            <Text className="mt-3 font-inter-semibold text-sm text-[#fca5a5]">
+              Mandatory update required. Install latest build before continuing.
+            </Text>
+          ) : null}
+          {updateCheck?.isUpdateAvailable && !updateCheck?.isForceUpdate ? (
+            <Text className="mt-3 font-inter-semibold text-sm text-[#93c5fd]">
+              New update available.
+            </Text>
+          ) : null}
+          <View className="mt-4 flex-row gap-3">
+            <Button
+              mode="outlined"
+              loading={checkingUpdates}
+              disabled={checkingUpdates}
+              onPress={() => {
+                void refreshUpdateCheck({ showLatestToast: true });
+              }}
+            >
+              Check for updates
+            </Button>
+            <Button
+              mode="contained-tonal"
+              disabled={!updateCheck?.isUpdateAvailable}
+              onPress={() => {
+                void openUpdateDownload();
+              }}
+            >
+              Download update
             </Button>
           </View>
         </View>
