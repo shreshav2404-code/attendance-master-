@@ -49,6 +49,12 @@
       "expo-font",
       "expo-document-picker",
       [
+        "expo-camera",
+        {
+          "cameraPermission": "AttendX uses the camera to scan a classmate's timetable QR code."
+        }
+      ],
+      [
         "expo-build-properties",
         {
           "ios": {

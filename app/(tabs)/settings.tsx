@@ -13,6 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { ExamWeekToggle } from "@/components/settings/ExamWeekToggle";
 import { PendingODManager } from "@/components/settings/PendingODManager";
 import { SyncReportForm } from "@/components/settings/SyncReportForm";
+import { TimetableShareCard } from "@/components/settings/TimetableShareCard";
 import { BottomSheet } from "@/components/shared/BottomSheet";
 import { Toast } from "@/components/shared/Toast";
 import { buildODTemplateFromTimetable } from "@/lib/calculations";
@@ -53,7 +54,7 @@ import { useAttendanceStore } from "@/store/attendanceStore";
 import { useODStore } from "@/store/odStore";
 import { useStudentStore } from "@/store/studentStore";
 import { useSubjectStore } from "@/store/subjectStore";
-import type { OfficialSubjectInput } from "@/types";
+import type { OfficialSubjectInput, TimetableImportPlan } from "@/types";
 
 const CREATOR_UPI_CONFIG = {
   upiId: "kkjha537428-1@okaxis",
@@ -80,8 +81,10 @@ export default function SettingsScreen() {
     notificationSettings,
     workingDays,
     workingDateOverrides,
+    hourSlots,
     updateStudent,
     setExamWeek,
+    setHourSlots,
     setWorkingDateOverride,
     removeWorkingDateOverride,
     setNotificationSettings,
@@ -90,7 +93,7 @@ export default function SettingsScreen() {
     setOfficialSyncSnapshotBySubject,
   } = useStudent();
   const { subjects, setSubjects } = useSubjects();
-  const { timetable } = useTimetable();
+  const { timetable, setTimetable } = useTimetable();
   const { dailyLogs, setDailyLogs } = useDailyLog();
   const { odEvents, setODEvents } = useODEvents();
   const { summaries, overall } = useAttendanceSummary();
@@ -140,6 +143,14 @@ export default function SettingsScreen() {
     }
     return "Unknown";
   }, [updateCheck]);
+
+  const applyTimetableImport = async (plan: TimetableImportPlan) => {
+    if (plan.createdSubjects.length > 0) {
+      await setSubjects([...subjects, ...plan.createdSubjects]);
+    }
+    await setHourSlots(plan.hourSlots, plan.workingDays);
+    await setTimetable(plan.timetable);
+  };
 
   useEffect(() => {
     setProfile({
@@ -675,6 +686,18 @@ export default function SettingsScreen() {
               Edit timetable
             </Button>
           </View>
+
+          <TimetableShareCard
+            subjects={subjects}
+            timetable={timetable}
+            hourSlots={hourSlots}
+            workingDays={workingDays}
+            onImport={applyTimetableImport}
+            onToast={(message) => {
+              setToastMessage(message);
+              setTimeout(() => setToastMessage(""), 2000);
+            }}
+          />
         </View>
 
         <View className="mt-6">

@@ -266,6 +266,41 @@ export interface ODTemplateResult {
   logs: DailyLog[];
 }
 
+export interface TimetableShareSubject {
+  code: string;
+  name: string;
+  shortName: string;
+  isLab: boolean;
+  color: string;
+}
+
+export interface TimetableShareSlot {
+  day: WorkingDay;
+  hour: number;
+  subjectIndex: number;
+  isDouble: boolean;
+  isLab: boolean;
+}
+
+export interface TimetableSharePayload {
+  version: number;
+  workingDays: WorkingDay[];
+  hourSlots: HourSlot[];
+  subjects: TimetableShareSubject[];
+  slots: TimetableShareSlot[];
+}
+
+export interface TimetableImportPlan {
+  createdSubjects: Subject[];
+  timetable: TimetableSlot[];
+  hourSlots: HourSlot[];
+  workingDays: WorkingDay[];
+  matchedCount: number;
+  createdCount: number;
+  slotCount: number;
+  droppedSlotCount: number;
+}
+
 export interface AppBackupPayload {
   studentBundle: StudentBundle;
   hourSlotBundle: HourSlotBundle;
