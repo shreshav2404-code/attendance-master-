@@ -1,8 +1,8 @@
 {
   "latestVersion": "9.0.1",
   "minimumVersion": "8.0.10",
-  "apkUrl": "https://expo.dev/artifacts/eas/4r7EwJ4qFXZjyD2dFqWPPj.apk",
+  "apkUrl": "https://expo.dev/artifacts/eas/L73CE68dag2urboTvrjuuct-8WGagJkAOw116S_mzTM.apk",
   "iosStoreUrl": "",
-  "notes": "AttendX 9.0.1 release",
-  "publishedAt": "2026-04-08T01:30:12+05:30"
+  "notes": "AttendX 9.0.1 - timetable QR share & import",
+  "publishedAt": "2026-07-07T00:00:00+05:30"
 }
