@@ -1,5 +1,5 @@
 import { CartesianChart, Line, type PointsArray } from "victory-native";
-import { Text, View } from "react-native";
+import { Platform, Text, View } from "react-native";
 
 import { EmptyState } from "@/components/shared/EmptyState";
 import { COLORS } from "@/lib/constants";
@@ -23,6 +23,20 @@ export const TrendChart = ({ data }: TrendChartProps) => {
       <EmptyState
         title="Trend chart waiting for data"
         description="Start logging attendance to unlock weekly Physical, Official OD, and Projected trend lines."
+      />
+    );
+  }
+
+  // victory-native draws with Skia, which needs CanvasKit loaded first on web.
+  // The web build is only used for previews, so show the latest values instead
+  // of crashing the whole dashboard.
+  if (Platform.OS === "web") {
+    const latest = data[data.length - 1];
+
+    return (
+      <EmptyState
+        title="Weekly trend (phone only)"
+        description={`Latest week: physical ${latest?.physical ?? 0}%, with OD ${latest?.official ?? 0}%, projected ${latest?.projected ?? 0}%. The chart itself draws in the phone app.`}
       />
     );
   }

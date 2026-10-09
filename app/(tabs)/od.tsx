@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { Toast } from "@/components/shared/Toast";
 import { triggerSuccessHaptic, triggerTapHaptic, triggerWarningHaptic } from "@/lib/haptics";
 import { useDailyLog } from "@/hooks/useDailyLog";
+import { useDeleteODEvent } from "@/hooks/useDeleteODEvent";
 import { useODEvents } from "@/hooks/useODEvents";
 import { useStudent } from "@/hooks/useStudent";
 import { useSubjects } from "@/hooks/useSubjects";
@@ -19,12 +20,9 @@ export default function ODTabScreen() {
   const { subjects } = useSubjects();
   const { timetable } = useTimetable();
   const { workingDays, workingDateOverrides } = useStudent();
-  const {
-    odEvents,
-    addODEvent,
-    removeODEvent,
-  } = useODEvents();
-  const { addLogs, removeLogsByODEvent } = useDailyLog();
+  const { odEvents, addODEvent } = useODEvents();
+  const { upsertLogs } = useDailyLog();
+  const deleteODEvent = useDeleteODEvent();
   const [sheetVisible, setSheetVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
 
@@ -60,7 +58,7 @@ export default function ODTabScreen() {
         onCreate={async (odEvent, logs) => {
           await triggerTapHaptic();
           await addODEvent(odEvent);
-          await addLogs(logs);
+          await upsertLogs(logs);
           setToastMessage("OD event created");
           await triggerSuccessHaptic();
           setTimeout(() => setToastMessage(""), 1800);
@@ -73,7 +71,7 @@ export default function ODTabScreen() {
           Track every official and pending OD entry from hackathons to sports day.
         </Text>
 
-        <View className="mt-6 flex-row flex-wrap gap-3">
+        <View className="mt-6 flex-row gap-3">
           {[
             ["Tracked", totalTracked],
             ["Registered", totalRegistered],
@@ -81,9 +79,12 @@ export default function ODTabScreen() {
           ].map(([label, value]) => (
             <View
               key={label}
-              className="w-[31%] rounded-[22px] border border-white/10 bg-white/5 p-4"
+              className="flex-1 rounded-[22px] border border-white/10 bg-white/5 px-3 py-4"
             >
-              <Text className="font-inter text-xs uppercase tracking-[0.8px] text-white/55">
+              <Text
+                numberOfLines={1}
+                className="font-inter text-[11px] uppercase tracking-[0.4px] text-white/55"
+              >
                 {label}
               </Text>
               <Text className="mt-2 font-inter-bold text-2xl text-white">
@@ -119,8 +120,11 @@ export default function ODTabScreen() {
                     .reduce((sum, subject) => sum + subject.hours, 0);
 
                   await triggerWarningHaptic();
-                  await removeLogsByODEvent(event.id);
-                  await removeODEvent(event.id);
+
+                  if (!(await deleteODEvent(event))) {
+                    return;
+                  }
+
                   setToastMessage(
                     `OD deleted · -${removedTracked}h tracked, -${removedRegistered}h official`,
                   );

@@ -17,6 +17,7 @@ export const useDailyLog = (date?: string) => {
     setDailyLogs: useAttendanceStore((state) => state.setDailyLogs),
     setLogsForDate: useAttendanceStore((state) => state.setLogsForDate),
     addLogs: useAttendanceStore((state) => state.addLogs),
+    upsertLogs: useAttendanceStore((state) => state.upsertLogs),
     removeLogsByODEvent: useAttendanceStore(
       (state) => state.removeLogsByODEvent,
     ),

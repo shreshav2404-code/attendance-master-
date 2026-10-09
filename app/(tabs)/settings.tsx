@@ -17,6 +17,7 @@ import { TimetableShareCard } from "@/components/settings/TimetableShareCard";
 import { BottomSheet } from "@/components/shared/BottomSheet";
 import { Toast } from "@/components/shared/Toast";
 import { buildODTemplateFromTimetable } from "@/lib/calculations";
+import { confirmAction } from "@/lib/confirm";
 import {
   DEFAULT_EXAM_WEEK_SETTINGS,
   DEFAULT_HOUR_SLOTS,
@@ -42,7 +43,7 @@ import {
   buildPendingODImportPlan,
   parsePendingODImportFile,
 } from "@/lib/pendingODImport";
-import { formatDateLabel, generateId, getTodayKey } from "@/lib/utils";
+import { formatDateLabel, generateId, getTodayKey, isValidDateKey } from "@/lib/utils";
 import { useAttendanceSummary } from "@/hooks/useAttendanceSummary";
 import { useDailyLog } from "@/hooks/useDailyLog";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -54,7 +55,9 @@ import { useAttendanceStore } from "@/store/attendanceStore";
 import { useODStore } from "@/store/odStore";
 import { useStudentStore } from "@/store/studentStore";
 import { useSubjectStore } from "@/store/subjectStore";
-import type { OfficialSubjectInput, TimetableImportPlan } from "@/types";
+import type { DailyLog, OfficialSubjectInput, TimetableImportPlan } from "@/types";
+
+const EXAM_WEEK_NOTE = "Exam week suspension";
 
 const CREATOR_UPI_CONFIG = {
   upiId: "kkjha537428-1@okaxis",
@@ -484,6 +487,7 @@ export default function SettingsScreen() {
         },
       ],
       createdAt,
+      source: "manual-pending" as const,
     };
     const nextLog = {
       id: `${odEventId}_0`,
@@ -748,48 +752,61 @@ export default function SettingsScreen() {
             <ExamWeekToggle
               value={examWeek}
               onChange={(nextValue) => {
-                void triggerTapHaptic();
+                const switchToggled = nextValue.enabled !== examWeek.enabled;
                 void setExamWeek(nextValue);
 
-                if (
-                  nextValue.enabled &&
-                  nextValue.startDate &&
-                  nextValue.endDate
-                ) {
-                  const template = buildODTemplateFromTimetable({
-                    timetable,
-                    startDate: nextValue.startDate,
-                    endDate: nextValue.endDate,
-                    note: "Exam week suspension",
-                    workingDays,
-                    workingDateOverrides,
-                  });
-                  const existingKeys = new Set(
-                    dailyLogs.map(
-                      (log) =>
-                        `${log.date}_${log.subjectId}_${log.status}_${log.hours}`,
-                    ),
-                  );
-                  const suspendedLogs = template.logs
-                    .map((log) => ({
-                      ...log,
-                      id: generateId("suspended"),
-                      status: "suspended" as const,
-                      odEventId: undefined,
-                    }))
-                    .filter(
-                      (log) =>
-                        !existingKeys.has(
-                          `${log.date}_${log.subjectId}_${log.status}_${log.hours}`,
-                        ),
-                    );
+                // Date fields call this on every keystroke, so only act on a
+                // complete, valid range. Upcoming exam-week suspensions are
+                // rebuilt each time (and dropped when switched off); past ones
+                // stay as a record.
+                const today = getTodayKey();
+                const isUpcomingExamLog = (log: DailyLog) =>
+                  log.note === EXAM_WEEK_NOTE &&
+                  log.status === "suspended" &&
+                  log.date >= today;
+                const rangeIsValid =
+                  Boolean(nextValue.startDate && nextValue.endDate) &&
+                  isValidDateKey(nextValue.startDate ?? "") &&
+                  isValidDateKey(nextValue.endDate ?? "") &&
+                  (nextValue.endDate ?? "") >= (nextValue.startDate ?? "");
 
-                  void setDailyLogs([...dailyLogs, ...suspendedLogs]);
+                if (!nextValue.enabled || rangeIsValid) {
+                  const keptLogs = dailyLogs.filter((log) => !isUpcomingExamLog(log));
+                  const suspendedLogs =
+                    nextValue.enabled && nextValue.startDate && nextValue.endDate
+                      ? buildODTemplateFromTimetable({
+                          timetable,
+                          startDate: nextValue.startDate,
+                          endDate: nextValue.endDate,
+                          note: EXAM_WEEK_NOTE,
+                          workingDays,
+                          workingDateOverrides,
+                        })
+                          .logs.filter((log) => log.date >= today)
+                          .map((log) => ({
+                            ...log,
+                            id: generateId("suspended"),
+                            status: "suspended" as const,
+                            odEventId: undefined,
+                          }))
+                      : [];
+
+                  if (
+                    suspendedLogs.length > 0 ||
+                    keptLogs.length !== dailyLogs.length
+                  ) {
+                    void setDailyLogs([...keptLogs, ...suspendedLogs]);
+                  }
                 }
 
-                setToastMessage("Exam week updated");
-                void triggerSuccessHaptic();
-                setTimeout(() => setToastMessage(""), 1800);
+                if (switchToggled) {
+                  void triggerTapHaptic();
+                  setToastMessage(
+                    nextValue.enabled ? "Exam week on" : "Exam week off",
+                  );
+                  void triggerSuccessHaptic();
+                  setTimeout(() => setToastMessage(""), 1800);
+                }
               }}
             />
           </View>
@@ -1105,6 +1122,17 @@ export default function SettingsScreen() {
               buttonColor="#7f1d1d"
               onPress={async () => {
                 await triggerWarningHaptic();
+                const confirmed = await confirmAction({
+                  title: "Clear all data?",
+                  message:
+                    "This erases your profile, subjects, timetable, attendance and OD events from this phone. Export a backup first if you might need them. This can't be undone.",
+                  confirmLabel: "Erase everything",
+                });
+
+                if (!confirmed) {
+                  return;
+                }
+
                 await clearAllStorage();
                 useStudentStore.setState((currentValue) => ({
                   ...currentValue,

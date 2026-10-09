@@ -1,14 +1,18 @@
-import { useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { ScrollView, Text, View } from "react-native";
+import { Button } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { useDeleteODEvent } from "@/hooks/useDeleteODEvent";
 import { useODEvents } from "@/hooks/useODEvents";
 import { useSubjects } from "@/hooks/useSubjects";
+import { triggerWarningHaptic } from "@/lib/haptics";
 
 export default function ODEventDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { odEvents } = useODEvents();
   const { subjects } = useSubjects();
+  const deleteODEvent = useDeleteODEvent();
 
   const event = odEvents.find((item) => item.id === id);
   const subjectLookup = new Map(subjects.map((subject) => [subject.id, subject]));
@@ -58,6 +62,22 @@ export default function ODEventDetailScreen() {
             </View>
           ))}
         </View>
+
+        <Button
+          mode="contained"
+          buttonColor="#7f1d1d"
+          icon="delete-outline"
+          style={{ marginTop: 24 }}
+          onPress={async () => {
+            await triggerWarningHaptic();
+
+            if (await deleteODEvent(event)) {
+              router.back();
+            }
+          }}
+        >
+          Delete OD event
+        </Button>
       </ScrollView>
     </SafeAreaView>
   );

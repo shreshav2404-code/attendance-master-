@@ -28,6 +28,15 @@ import type {
   WorkingDay,
 } from "@/types";
 
+export const getSlotLogId = (date: string, slotId: string): string =>
+  `${date}_${slotId}`;
+
+// Older adjustments have no `source`, so fall back to the names the app gave them.
+export const isPendingODAdjustment = (event: ODEvent): boolean =>
+  event.source === "manual-pending" ||
+  event.source === "pending-import" ||
+  /^(Manual )?Pending OD · /.test(event.name);
+
 export const resolveClassHours = (
   slot: Pick<TimetableSlot, "isDouble" | "isLab">,
 ): number => (slot.isDouble || slot.isLab ? 2 : 1);
@@ -448,7 +457,9 @@ export const buildODTemplateFromTimetable = ({
 
       subjectHourMap.set(slot.subjectId, existingHours + hours);
       logs.push({
-        id: `${odEventId ?? "od"}_${dateKey}_${slot.subjectId}_${slot.hour}`,
+        // Same id the Today screen gives this class period, so an OD for an
+        // already-marked class replaces that entry instead of duplicating it.
+        id: getSlotLogId(dateKey, slot.id),
         date: dateKey,
         subjectId: slot.subjectId,
         status: "od",

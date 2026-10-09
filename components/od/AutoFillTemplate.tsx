@@ -1,37 +1,21 @@
-import { useState } from "react";
-import { View } from "react-native";
-import { Button, TextInput } from "react-native-paper";
+import { Text, View } from "react-native";
+import { Button } from "react-native-paper";
 
 interface AutoFillTemplateProps {
-  onApply: (startDate: string, endDate: string) => void;
+  onApply: () => void;
+  message?: string;
 }
 
-export const AutoFillTemplate = ({ onApply }: AutoFillTemplateProps) => {
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-
-  return (
-    <View className="rounded-[24px] border border-dashed border-white/15 bg-black/10 p-4">
-      <TextInput
-        mode="outlined"
-        label="Start Date (YYYY-MM-DD)"
-        value={startDate}
-        onChangeText={setStartDate}
-        className="mb-3 bg-transparent"
-      />
-      <TextInput
-        mode="outlined"
-        label="End Date (YYYY-MM-DD)"
-        value={endDate}
-        onChangeText={setEndDate}
-        className="mb-4 bg-transparent"
-      />
-      <Button
-        mode="contained-tonal"
-        onPress={() => onApply(startDate, endDate || startDate)}
-      >
-        Auto-fill from timetable
-      </Button>
-    </View>
-  );
-};
+export const AutoFillTemplate = ({ onApply, message }: AutoFillTemplateProps) => (
+  <View className="rounded-[24px] border border-dashed border-white/15 bg-black/10 p-4">
+    <Text className="mb-3 font-inter text-sm leading-6 text-white/60">
+      Uses the Date and End date above to switch on every class in your timetable for that range.
+    </Text>
+    <Button mode="contained-tonal" onPress={onApply}>
+      Auto-fill from timetable
+    </Button>
+    {message ? (
+      <Text className="mt-3 font-inter text-sm text-amber-200">{message}</Text>
+    ) : null}
+  </View>
+);

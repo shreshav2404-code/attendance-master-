@@ -1,4 +1,4 @@
-import { format, isWithinInterval, parseISO } from "date-fns";
+import { format, isValid, isWithinInterval, parseISO } from "date-fns";
 
 import type {
   DailyLog,
@@ -23,6 +23,16 @@ export const formatDateLabel = (
 ): string => format(typeof date === "string" ? parseISO(date) : date, pattern);
 
 export const getTodayKey = (): string => format(new Date(), "yyyy-MM-dd");
+
+// True only for a real calendar date written as YYYY-MM-DD (rejects 2026-02-30).
+export const isValidDateKey = (value: string): boolean => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return false;
+  }
+
+  const parsed = parseISO(value);
+  return isValid(parsed) && format(parsed, "yyyy-MM-dd") === value;
+};
 
 export const getWorkingDayForDate = (date: string): WorkingDay => {
   const weekday = format(parseISO(date), "EEE");

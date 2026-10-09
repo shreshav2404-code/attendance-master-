@@ -19,6 +19,7 @@ import {
   parseOfficialAttendanceWorkbook,
 } from "@/lib/officialReportImport";
 import { generateId } from "@/lib/utils";
+import { useDeleteSubject } from "@/hooks/useDeleteSubject";
 import { useSubjects } from "@/hooks/useSubjects";
 
 const subjectSchema = z.object({
@@ -33,7 +34,8 @@ const defaultSubjectColor = SUBJECT_COLOR_PALETTE[0]!;
 
 export default function SubjectsScreen() {
   const params = useLocalSearchParams<{ mode?: string | string[] }>();
-  const { subjects, addSubject, removeSubject, setSubjects } = useSubjects();
+  const { subjects, addSubject, setSubjects } = useSubjects();
+  const deleteSubject = useDeleteSubject();
   const mode = Array.isArray(params.mode) ? params.mode[0] : params.mode;
   const isEditMode = mode === "edit";
   const {
@@ -325,9 +327,12 @@ export default function SubjectsScreen() {
             <View className="flex-row items-center gap-3">
               <SubjectBadge code={subject.shortName} color={subject.color} />
               <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Delete ${subject.name}`}
+                hitSlop={10}
                 onPress={async () => {
                   await triggerWarningHaptic();
-                  await removeSubject(subject.id);
+                  await deleteSubject(subject);
                 }}
               >
                 <Trash2 color="#f87171" size={18} />

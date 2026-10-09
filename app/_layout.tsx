@@ -47,6 +47,9 @@ const paperTheme = {
   colors: {
     ...MD3DarkTheme.colors,
     primary: COLORS.secondary,
+    // MD3's default onPrimary is a dark purple meant for a light primary; on this
+    // blue it made every filled button's label unreadable.
+    onPrimary: COLORS.white,
     secondary: COLORS.projected,
     background: COLORS.background,
     surface: COLORS.surface,

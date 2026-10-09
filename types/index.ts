@@ -70,6 +70,9 @@ export interface ODEvent {
   type: ODEventType;
   subjects: ODSubject[];
   createdAt: string;
+  // Set for pending-OD hour adjustments (Settings manual add / file import),
+  // which are not tied to a timetable class.
+  source?: "manual-pending" | "pending-import";
 }
 
 export interface ODSubject {

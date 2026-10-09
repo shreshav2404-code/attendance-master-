@@ -11,6 +11,7 @@ interface AttendanceStoreState {
   setDailyLogs: (dailyLogs: DailyLog[]) => Promise<void>;
   setLogsForDate: (date: string, logs: DailyLog[]) => Promise<void>;
   addLogs: (logs: DailyLog[]) => Promise<void>;
+  upsertLogs: (logs: DailyLog[]) => Promise<void>;
   removeLogsByODEvent: (odEventId: string) => Promise<void>;
 }
 
@@ -43,6 +44,15 @@ export const useAttendanceStore = create<AttendanceStoreState>((set, get) => ({
   },
   addLogs: async (logs) => {
     const dailyLogs = [...get().dailyLogs, ...logs];
+    set({ dailyLogs });
+    await saveDailyLogs(dailyLogs);
+  },
+  upsertLogs: async (logs) => {
+    const incomingIds = new Set(logs.map((log) => log.id));
+    const dailyLogs = [
+      ...get().dailyLogs.filter((log) => !incomingIds.has(log.id)),
+      ...logs,
+    ];
     set({ dailyLogs });
     await saveDailyLogs(dailyLogs);
   },

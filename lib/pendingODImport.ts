@@ -443,6 +443,7 @@ export const buildPendingODImportPlan = ({
         },
       ],
       createdAt,
+      source: "pending-import",
     });
     logs.push({
       id: `${eventId}_0`,

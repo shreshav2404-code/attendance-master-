@@ -8,6 +8,7 @@ interface ODPickerProps {
   events: ODEvent[];
   onClose: () => void;
   onSelect: (event: ODEvent) => void;
+  onSelectWithoutEvent: () => void;
 }
 
 export const ODPicker = ({
@@ -15,8 +16,9 @@ export const ODPicker = ({
   events,
   onClose,
   onSelect,
+  onSelectWithoutEvent,
 }: ODPickerProps) => (
-  <BottomSheet visible={visible} onClose={onClose} title="Pick OD event">
+  <BottomSheet visible={visible} onClose={onClose} title="Mark as OD">
     <ScrollView
       style={{ maxHeight: 420 }}
       nestedScrollEnabled
@@ -24,6 +26,18 @@ export const ODPicker = ({
       showsVerticalScrollIndicator={false}
     >
       <View className="gap-3">
+        <Pressable
+          className="rounded-[24px] border border-violet-400/40 bg-violet-500/10 p-4"
+          onPress={() => {
+            onSelectWithoutEvent();
+            onClose();
+          }}
+        >
+          <Text className="font-inter-bold text-base text-white">OD without an event</Text>
+          <Text className="mt-1 font-inter text-sm text-white/55">
+            Counts as pending OD for this class only
+          </Text>
+        </Pressable>
         {events.map((event) => (
           <Pressable
             key={event.id}

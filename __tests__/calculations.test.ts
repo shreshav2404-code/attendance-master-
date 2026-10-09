@@ -8,9 +8,12 @@ import {
   calculateSkipSimulations,
   getAttendanceStatus,
   getODPendingEvents,
+  getSlotLogId,
+  isPendingODAdjustment,
   resolveClassHours,
   simulateSkipImpact,
 } from "@/lib/calculations";
+import { isValidDateKey } from "@/lib/utils";
 import type { DailyLog, ODEvent, Student, Subject, TimetableSlot } from "@/types";
 
 const student: Student = {
@@ -541,6 +544,45 @@ describe("calculations", () => {
       ]),
     );
     expect(template.logs).toHaveLength(2);
+  });
+
+  it("buildODTemplateFromTimetable gives each class the Today screen's log id", () => {
+    const template = buildODTemplateFromTimetable({
+      timetable: [
+        { id: "fri_1", day: "Fri", hour: 1, subjectId: "ml", isDouble: false, isLab: false },
+      ],
+      startDate: "2026-04-03",
+      endDate: "2026-04-03",
+      odEventId: "od-x",
+    });
+
+    // Same id as a Today-screen entry for that class, so an OD replaces it
+    // instead of counting the class twice.
+    expect(template.logs[0]?.id).toBe(getSlotLogId("2026-04-03", "fri_1"));
+  });
+
+  it("isPendingODAdjustment recognises tagged and older adjustment events", () => {
+    const base: ODEvent = {
+      id: "od-1",
+      name: "Hackathon",
+      date: "2026-04-03",
+      reason: "r",
+      type: "other",
+      subjects: [],
+      createdAt: "2026-04-03T00:00:00.000Z",
+    };
+
+    expect(isPendingODAdjustment(base)).toBe(false);
+    expect(isPendingODAdjustment({ ...base, source: "manual-pending" })).toBe(true);
+    expect(isPendingODAdjustment({ ...base, name: "Manual Pending OD · PHY" })).toBe(true);
+    expect(isPendingODAdjustment({ ...base, name: "Pending OD · PHY" })).toBe(true);
+  });
+
+  it("isValidDateKey only accepts real YYYY-MM-DD dates", () => {
+    expect(isValidDateKey("2026-10-10")).toBe(true);
+    expect(isValidDateKey("")).toBe(false);
+    expect(isValidDateKey("2026-02-30")).toBe(false);
+    expect(isValidDateKey("10-10-2026")).toBe(false);
   });
 
   it("buildODTemplateFromTimetable normalizes reversed date range", () => {

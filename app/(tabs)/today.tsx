@@ -3,8 +3,12 @@ import { RefreshControl, ScrollView, Text, View } from "react-native";
 import { Button } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { resolveClassHours } from "@/lib/calculations";
-import { triggerSuccessHaptic, triggerTapHaptic, triggerWarningHaptic } from "@/lib/haptics";
+import {
+  getSlotLogId,
+  isPendingODAdjustment,
+  resolveClassHours,
+} from "@/lib/calculations";
+import { triggerSuccessHaptic, triggerTapHaptic } from "@/lib/haptics";
 import {
   formatDateLabel,
   getTodayKey,
@@ -31,6 +35,8 @@ export default function TodayScreen() {
   const { odEvents } = useODEvents();
   const [statusBySlot, setStatusBySlot] = useState<Record<string, AttendanceStatus>>({});
   const [eventBySlot, setEventBySlot] = useState<Record<string, string | undefined>>({});
+  // Id of the stored log each card was filled from; saving replaces exactly these.
+  const [loggedIdBySlot, setLoggedIdBySlot] = useState<Record<string, string>>({});
   const [pickerSlotId, setPickerSlotId] = useState<string | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [toastVisible, setToastVisible] = useState(false);
@@ -60,25 +66,84 @@ export default function TodayScreen() {
     () => new Map(hourSlots.map((slot) => [slot.hour, slot])),
     [hourSlots],
   );
-  const readOnly = logsForDate.length > 0 && !editMode;
+  // Pending-OD adjustments are extra hours, not classes: they never fill a card,
+  // lock the day, or get overwritten by Save.
+  const adjustmentEventIds = useMemo(
+    () => new Set(odEvents.filter(isPendingODAdjustment).map((event) => event.id)),
+    [odEvents],
+  );
+  const classLogsForDate = useMemo(
+    () =>
+      logsForDate.filter(
+        (log) => !log.odEventId || !adjustmentEventIds.has(log.odEventId),
+      ),
+    [adjustmentEventIds, logsForDate],
+  );
+  const daySaved = todaySlots.some((slot) =>
+    classLogsForDate.some(
+      (log) =>
+        log.id === getSlotLogId(todayKey, slot.id) && log.subjectId === slot.subjectId,
+    ),
+  );
+  const readOnly = daySaved && !editMode;
+  // Only class events that cover today can be linked; linking an unrelated event
+  // would make deleting that event also delete today's attendance.
+  const odEventsForToday = useMemo(
+    () =>
+      odEvents.filter(
+        (event) =>
+          !adjustmentEventIds.has(event.id) &&
+          todayKey >= event.date &&
+          todayKey <= (event.endDate ?? event.date),
+      ),
+    [adjustmentEventIds, odEvents, todayKey],
+  );
+
+  const setSlotStatus = (
+    slotId: string,
+    status: AttendanceStatus,
+    odEventId?: string,
+  ) => {
+    setStatusBySlot((currentValue) => ({
+      ...currentValue,
+      [slotId]: status,
+    }));
+    setEventBySlot((currentValue) => ({
+      ...currentValue,
+      [slotId]: status === "od" ? odEventId : undefined,
+    }));
+  };
 
   useEffect(() => {
+    const slotLogIds = new Set(todaySlots.map((slot) => getSlotLogId(todayKey, slot.id)));
+    // Logs without a class-period id (older OD events, exam week) fill the
+    // remaining cards of their subject in order.
     const queues = new Map(
       subjects.map((subject) => [
         subject.id,
-        logsForDate.filter((log) => log.subjectId === subject.id).slice(),
+        classLogsForDate.filter(
+          (log) => log.subjectId === subject.id && !slotLogIds.has(log.id),
+        ),
       ]),
     );
     const nextStatusBySlot: Record<string, AttendanceStatus> = {};
     const nextEventBySlot: Record<string, string | undefined> = {};
+    const nextLoggedIdBySlot: Record<string, string> = {};
 
     todaySlots.forEach((slot) => {
-      const queue = queues.get(slot.subjectId);
-      const log = queue?.shift();
+      const log =
+        // A cell keeps its id when its subject changes, so match the subject too.
+        classLogsForDate.find(
+          (item) =>
+            item.id === getSlotLogId(todayKey, slot.id) &&
+            item.subjectId === slot.subjectId,
+        ) ??
+        queues.get(slot.subjectId)?.shift();
 
       if (log) {
         nextStatusBySlot[slot.id] = log.status;
         nextEventBySlot[slot.id] = log.odEventId;
+        nextLoggedIdBySlot[slot.id] = log.id;
       }
     });
 
@@ -96,7 +161,8 @@ export default function TodayScreen() {
 
     setStatusBySlot(nextStatusBySlot);
     setEventBySlot(nextEventBySlot);
-  }, [examWeek, logsForDate, subjects, todayKey, todaySlots]);
+    setLoggedIdBySlot(nextLoggedIdBySlot);
+  }, [classLogsForDate, examWeek, subjects, todayKey, todaySlots]);
 
   const handleODSelect = (event: ODEvent) => {
     if (!pickerSlotId) {
@@ -104,14 +170,7 @@ export default function TodayScreen() {
     }
 
     void triggerTapHaptic();
-    setStatusBySlot((currentValue) => ({
-      ...currentValue,
-      [pickerSlotId]: "od",
-    }));
-    setEventBySlot((currentValue) => ({
-      ...currentValue,
-      [pickerSlotId]: event.id,
-    }));
+    setSlotStatus(pickerSlotId, "od", event.id);
   };
 
   const markedHours = todaySlots.reduce(
@@ -137,9 +196,17 @@ export default function TodayScreen() {
       <Toast visible={toastVisible} message="Today's attendance saved" />
       <ODPicker
         visible={pickerSlotId !== null}
-        events={odEvents}
+        events={odEventsForToday}
         onClose={() => setPickerSlotId(null)}
         onSelect={handleODSelect}
+        onSelectWithoutEvent={() => {
+          if (!pickerSlotId) {
+            return;
+          }
+
+          void triggerTapHaptic();
+          setSlotStatus(pickerSlotId, "od");
+        }}
       />
       <ScrollView
         refreshControl={
@@ -165,7 +232,7 @@ export default function TodayScreen() {
               {todaySlots.length} class slot{todaySlots.length === 1 ? "" : "s"} today
             </Text>
           </View>
-          {logsForDate.length > 0 ? (
+          {daySaved ? (
             <Button
               mode="outlined"
               onPress={() => {
@@ -197,22 +264,16 @@ export default function TodayScreen() {
                 readOnly={readOnly}
                 onStatusChange={(status) => {
                   void triggerTapHaptic();
-                  setStatusBySlot((currentValue) => ({
-                    ...currentValue,
-                    [slot.id]: status,
-                  }));
+                  setSlotStatus(slot.id, status);
                 }}
                 onPickOD={() => {
-                  if (odEvents.length === 0) {
-                    void triggerWarningHaptic();
-                    setStatusBySlot((currentValue) => ({
-                      ...currentValue,
-                      [slot.id]: "od",
-                    }));
+                  void triggerTapHaptic();
+
+                  if (odEventsForToday.length === 0) {
+                    setSlotStatus(slot.id, "od");
                     return;
                   }
 
-                  void triggerTapHaptic();
                   setPickerSlotId(slot.id);
                 }}
               />
@@ -231,28 +292,35 @@ export default function TodayScreen() {
             onSave={async () => {
               await triggerTapHaptic();
               const createdAt = new Date().toISOString();
-              await setLogsForDate(
-                todayKey,
-                todaySlots.flatMap((slot) => {
-                  const status = statusBySlot[slot.id];
+              const savedLogs = todaySlots.flatMap((slot) => {
+                const status = statusBySlot[slot.id];
 
-                  if (!status) {
-                    return [];
-                  }
+                if (!status) {
+                  return [];
+                }
 
-                  return [
-                    {
-                      id: `${todayKey}_${slot.id}`,
-                      date: todayKey,
-                      subjectId: slot.subjectId,
-                      status,
-                      hours: resolveClassHours(slot),
-                      odEventId: eventBySlot[slot.id],
-                      createdAt,
-                    },
-                  ];
-                }),
-              );
+                return [
+                  {
+                    id: getSlotLogId(todayKey, slot.id),
+                    date: todayKey,
+                    subjectId: slot.subjectId,
+                    status,
+                    hours: resolveClassHours(slot),
+                    odEventId: eventBySlot[slot.id],
+                    createdAt,
+                  },
+                ];
+              });
+              // Replace only what the cards showed; keep everything else for
+              // today (pending-OD adjustments, logs for subjects not on today).
+              const replacedIds = new Set([
+                ...Object.values(loggedIdBySlot),
+                ...todaySlots.map((slot) => getSlotLogId(todayKey, slot.id)),
+              ]);
+              await setLogsForDate(todayKey, [
+                ...logsForDate.filter((log) => !replacedIds.has(log.id)),
+                ...savedLogs,
+              ]);
               setEditMode(false);
               setToastVisible(true);
               await triggerSuccessHaptic();
