@@ -151,14 +151,38 @@ export const calculateAttendanceSummary = ({
 }): AttendanceSummary => {
   const subjectLogs = logs.filter((log) => log.subjectId === subject.id);
   const officialSnapshot = officialSyncSnapshotBySubject?.[subject.id];
+  // Pending OD = every OD hour tracked minus every hour the college has
+  // registered (flags on events, or on OD entries that have no event). It must
+  // not depend on when an entry was created, or a sync would hide OD that was
+  // tracked before it but isn't registered yet.
+  const eventIds = new Set(odEvents.map((event) => event.id));
+  const trackedODHours = subjectLogs.reduce(
+    (sum, log) => (log.status === "od" ? sum + log.hours : sum),
+    0,
+  );
+  const registeredLooseODHours = subjectLogs.reduce(
+    (sum, log) =>
+      log.status === "od" && (!log.odEventId || !eventIds.has(log.odEventId))
+        ? sum + Math.min(log.hours, log.registeredHours ?? 0)
+        : sum,
+    0,
+  );
+  const registeredODHours =
+    getRegisteredODHours(subject.id, odEvents) + registeredLooseODHours;
   let TH = 0;
   let AH = 0;
   let DL = 0;
   let pendingOD = 0;
 
   if (officialSnapshot) {
+    // Only classes on or after the sync day add to TH/AH. An entry added later
+    // for an earlier day (a pending-OD import, a backdated OD) is a class the
+    // report already counted, so it only shows up as pending OD.
+    const syncDateKey = format(parseISO(officialSnapshot.syncedAt), "yyyy-MM-dd");
     const postSyncLogs = subjectLogs.filter(
-      (log) => !log.createdAt || log.createdAt > officialSnapshot.syncedAt,
+      (log) =>
+        (!log.createdAt || log.createdAt > officialSnapshot.syncedAt) &&
+        log.date >= syncDateKey,
     );
     const postSyncTH = postSyncLogs.reduce(
       (sum, log) => (log.status === "suspended" ? sum : sum + log.hours),
@@ -168,20 +192,18 @@ export const calculateAttendanceSummary = ({
       (sum, log) => (log.status === "present" ? sum + log.hours : sum),
       0,
     );
-    const trackedODPostSync = postSyncLogs.reduce(
-      (sum, log) => (log.status === "od" ? sum + log.hours : sum),
-      0,
-    );
     const registeredODPostSync = getRegisteredODHoursSinceSync({
       subjectId: subject.id,
       odEvents,
       syncedAt: officialSnapshot.syncedAt,
     });
 
+    // The official report's TH/AH/DL cover everything up to the sync; entries
+    // created after it are added on top.
     TH = officialSnapshot.TH + postSyncTH;
     AH = officialSnapshot.AH + postSyncAH;
     DL = officialSnapshot.DL + registeredODPostSync;
-    pendingOD = Math.max(0, trackedODPostSync - registeredODPostSync);
+    pendingOD = Math.max(0, trackedODHours - registeredODHours);
   } else {
     const calculatedTH = subjectLogs.reduce(
       (sum, log) => (log.status === "suspended" ? sum : sum + log.hours),
@@ -191,18 +213,10 @@ export const calculateAttendanceSummary = ({
       (sum, log) => (log.status === "present" ? sum + log.hours : sum),
       0,
     );
-    const trackedODHours = subjectLogs.reduce(
-      (sum, log) => (log.status === "od" ? sum + log.hours : sum),
-      0,
-    );
-    const calculatedDL = Math.min(
-      trackedODHours,
-      getRegisteredODHours(subject.id, odEvents),
-    );
 
     TH = calculatedTH;
     AH = calculatedAH;
-    DL = calculatedDL;
+    DL = Math.min(trackedODHours, registeredODHours);
     pendingOD = Math.max(0, trackedODHours - DL);
   }
 

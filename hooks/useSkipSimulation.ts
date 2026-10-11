@@ -1,6 +1,7 @@
 import {
   calculateAttendanceSummaries,
   calculateSkipSimulations,
+  getSlotLogId,
 } from "@/lib/calculations";
 import { getTodayKey, getWorkingDayForDate, isDateWorking } from "@/lib/utils";
 import { useAttendanceStore } from "@/store/attendanceStore";
@@ -26,12 +27,21 @@ export const useSkipSimulation = (date = getTodayKey()) => {
     return [];
   }
 
+  // Classes already marked for the day are in TH; simulating them again would
+  // count them twice, so only offer classes that haven't been marked yet.
+  const markedLogIds = new Set(
+    dailyLogs.filter((log) => log.date === date).map((log) => log.id),
+  );
   const slotsToday = isDateWorking({
     date,
     workingDays,
     workingDateOverrides,
   })
-    ? timetable.filter((slot) => slot.day === getWorkingDayForDate(date))
+    ? timetable.filter(
+        (slot) =>
+          slot.day === getWorkingDayForDate(date) &&
+          !markedLogIds.has(getSlotLogId(date, slot.id)),
+      )
     : [];
 
   return calculateSkipSimulations({

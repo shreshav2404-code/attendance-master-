@@ -1,6 +1,7 @@
 import { getTodayKey } from "@/lib/utils";
 import type {
   AttendanceSummary,
+  DailyLog,
   ODEvent,
   OfficialSyncSnapshotBySubject,
   OfficialSubjectInput,
@@ -94,15 +95,71 @@ const registerHoursInEvent = ({
   };
 };
 
+// Registered hours left over after the subject's OD events go to OD entries
+// that have no event (marked "OD without an event" on the Today screen),
+// oldest first, so they stop counting as pending.
+const registerHoursInLooseODLogs = ({
+  dailyLogs,
+  eventIds,
+  subjectId,
+  hoursToRegister,
+  syncedAt,
+}: {
+  dailyLogs: DailyLog[];
+  eventIds: Set<string>;
+  subjectId: string;
+  hoursToRegister: number;
+  syncedAt: string;
+}): { dailyLogs: DailyLog[]; remainingHours: number } => {
+  const today = getTodayKey();
+  const candidateIds = dailyLogs
+    .filter(
+      (log) =>
+        log.subjectId === subjectId &&
+        log.status === "od" &&
+        (!log.odEventId || !eventIds.has(log.odEventId)) &&
+        (log.registeredHours ?? 0) < log.hours &&
+        log.date <= today,
+    )
+    .sort((left, right) => left.date.localeCompare(right.date))
+    .map((log) => log.id);
+  let remainingHours = hoursToRegister;
+  const registeredById = new Map<string, number>();
+
+  candidateIds.forEach((id) => {
+    const log = dailyLogs.find((item) => item.id === id);
+
+    if (!log || remainingHours === 0) {
+      return;
+    }
+
+    const alreadyRegistered = log.registeredHours ?? 0;
+    const hours = Math.min(log.hours - alreadyRegistered, remainingHours);
+    registeredById.set(id, alreadyRegistered + hours);
+    remainingHours -= hours;
+  });
+
+  return {
+    dailyLogs: dailyLogs.map((log) =>
+      registeredById.has(log.id)
+        ? { ...log, registeredHours: registeredById.get(log.id), registeredAt: syncedAt }
+        : log,
+    ),
+    remainingHours,
+  };
+};
+
 export const applyOfficialSync = ({
   officialInputs,
   summaries,
   odEvents,
+  dailyLogs = [],
   syncedAt = new Date().toISOString(),
 }: {
   officialInputs: OfficialSubjectInput[];
   summaries: AttendanceSummary[];
   odEvents: ODEvent[];
+  dailyLogs?: DailyLog[];
   syncedAt?: string;
 }): SyncApplicationResult => {
   const reports = buildSyncReports({ officialInputs, summaries });
@@ -120,6 +177,8 @@ export const applyOfficialSync = ({
       {},
     );
   let updatedEvents = [...odEvents];
+  let updatedLogs = dailyLogs;
+  const eventIds = new Set(odEvents.map((event) => event.id));
 
   reports.forEach((report) => {
     if (report.newlyRegisteredOD === 0) {
@@ -148,11 +207,23 @@ export const applyOfficialSync = ({
       remainingHours = result.remainingHours;
       return result.event;
     });
+
+    if (remainingHours > 0) {
+      const result = registerHoursInLooseODLogs({
+        dailyLogs: updatedLogs,
+        eventIds,
+        subjectId: report.subjectId,
+        hoursToRegister: remainingHours,
+        syncedAt,
+      });
+      updatedLogs = result.dailyLogs;
+    }
   });
 
   return {
     reports,
     odEvents: updatedEvents,
+    dailyLogs: updatedLogs,
     lastSyncedAt: syncedAt,
     officialSyncSnapshotBySubject,
   };

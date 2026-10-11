@@ -39,6 +39,8 @@ export default function TodayScreen() {
   const [loggedIdBySlot, setLoggedIdBySlot] = useState<Record<string, string>>({});
   const [pickerSlotId, setPickerSlotId] = useState<string | null>(null);
   const [editMode, setEditMode] = useState(false);
+  // Bumped by "Cancel edit" so the cards reload what is actually saved.
+  const [reloadKey, setReloadKey] = useState(0);
   const [toastVisible, setToastVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -162,7 +164,7 @@ export default function TodayScreen() {
     setStatusBySlot(nextStatusBySlot);
     setEventBySlot(nextEventBySlot);
     setLoggedIdBySlot(nextLoggedIdBySlot);
-  }, [classLogsForDate, examWeek, subjects, todayKey, todaySlots]);
+  }, [classLogsForDate, examWeek, reloadKey, subjects, todayKey, todaySlots]);
 
   const handleODSelect = (event: ODEvent) => {
     if (!pickerSlotId) {
@@ -237,6 +239,12 @@ export default function TodayScreen() {
               mode="outlined"
               onPress={() => {
                 void triggerTapHaptic();
+
+                if (editMode) {
+                  // Cancelling discards unsaved changes instead of leaving them on screen.
+                  setReloadKey((currentValue) => currentValue + 1);
+                }
+
                 setEditMode((currentValue) => !currentValue);
               }}
             >
@@ -299,6 +307,17 @@ export default function TodayScreen() {
                   return [];
                 }
 
+                // Keep the original createdAt when editing: entries created
+                // before a sync are covered by the official numbers, and a new
+                // timestamp would count that class a second time. A plain OD
+                // entry also keeps the hours a sync already registered.
+                const previous = logsForDate.find(
+                  (log) => log.id === loggedIdBySlot[slot.id],
+                );
+                const odEventId = eventBySlot[slot.id];
+                const keepsRegistration =
+                  status === "od" && !odEventId && previous?.status === "od" && !previous.odEventId;
+
                 return [
                   {
                     id: getSlotLogId(todayKey, slot.id),
@@ -306,8 +325,14 @@ export default function TodayScreen() {
                     subjectId: slot.subjectId,
                     status,
                     hours: resolveClassHours(slot),
-                    odEventId: eventBySlot[slot.id],
-                    createdAt,
+                    odEventId,
+                    createdAt: previous?.createdAt ?? createdAt,
+                    ...(keepsRegistration && previous?.registeredHours
+                      ? {
+                          registeredHours: previous.registeredHours,
+                          registeredAt: previous.registeredAt,
+                        }
+                      : {}),
                   },
                 ];
               });
@@ -328,7 +353,7 @@ export default function TodayScreen() {
             }}
           />
           <Text className="mt-3 font-inter text-xs text-white/45">
-            {markedHours} tracked hour{markedHours === 1 ? "" : "s"} selected for today
+            {markedHours} hour{markedHours === 1 ? "" : "s"} marked for today
           </Text>
         </View>
       </ScrollView>

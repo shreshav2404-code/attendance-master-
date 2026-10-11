@@ -8,6 +8,8 @@ interface AnimatedNumberProps {
   prefix?: string;
   suffix?: string;
   className?: string;
+  // Keep the number on one line, shrinking the font if needed (native only).
+  fitOneLine?: boolean;
 }
 
 export const AnimatedNumber = ({
@@ -16,6 +18,7 @@ export const AnimatedNumber = ({
   prefix = "",
   suffix = "",
   className,
+  fitOneLine = false,
 }: AnimatedNumberProps) => {
   const animatedValue = useSharedValue(value);
   const [displayValue, setDisplayValue] = useState(value);
@@ -38,6 +41,8 @@ export const AnimatedNumber = ({
       animate={{ opacity: 1, translateY: 0 }}
       transition={{ type: "timing", duration: 350 }}
       className={className}
+      numberOfLines={fitOneLine ? 1 : undefined}
+      adjustsFontSizeToFit={fitOneLine}
     >
       {prefix}
       {displayValue.toFixed(decimals)}

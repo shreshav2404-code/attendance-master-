@@ -26,7 +26,7 @@ interface TimetableShareCardProps {
   hourSlots: HourSlot[];
   workingDays: WorkingDay[];
   onImport: (plan: TimetableImportPlan) => Promise<void>;
-  onToast: (message: string) => void;
+  onToast: (message: string, type?: "success" | "warning") => void;
 }
 
 interface ImportPreview {
@@ -127,7 +127,7 @@ export const TimetableShareCard = ({
     await triggerTapHaptic();
     const clipboardText = await Clipboard.getStringAsync();
     if (clipboardText.trim().length === 0) {
-      onToast("Clipboard is empty");
+      onToast("Clipboard is empty", "warning");
       return;
     }
     setImportCode(clipboardText.trim());
@@ -138,7 +138,7 @@ export const TimetableShareCard = ({
     if (!permission?.granted) {
       const result = await requestPermission();
       if (!result.granted) {
-        onToast("Camera permission is needed to scan a QR code");
+        onToast("Camera permission is needed to scan a QR code", "warning");
         return;
       }
     }

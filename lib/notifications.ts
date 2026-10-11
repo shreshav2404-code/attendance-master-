@@ -101,8 +101,17 @@ export const cancelDailyReminder = async (): Promise<void> => {
   }
 };
 
+export const isValidReminderTime = (time: string): boolean =>
+  /^([01]\d|2[0-3]):[0-5]\d$/.test(time.trim());
+
 export const scheduleDailyReminder = async (time: string): Promise<void> => {
-  const [hourString, minuteString] = time.split(":");
+  // The time field saves on every keystroke; ignore half-typed values like
+  // "20:3" and keep the last valid reminder instead of scheduling garbage.
+  if (!isValidReminderTime(time)) {
+    return;
+  }
+
+  const [hourString, minuteString] = time.trim().split(":");
   const hour = Number(hourString);
   const minute = Number(minuteString);
 
@@ -114,10 +123,13 @@ export const scheduleDailyReminder = async (time: string): Promise<void> => {
       body: "Don't forget to mark today's attendance! 📋",
       sound: true,
     },
+    // expo-notifications 0.29 needs an explicit trigger type. Without one, a
+    // { hour, minute } trigger fell through to Android's "show now" path, so the
+    // reminder popped up whenever it was scheduled and never at the chosen time.
     trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.DAILY,
       hour,
       minute,
-      repeats: true,
       channelId: "attendx-reminders",
     },
   });
@@ -151,7 +163,20 @@ export const scheduleODPendingReminder = async (
     trigger: null,
   });
 
-export const runProactiveAlerts = async ({
+// The root layout re-runs this on every data change, often twice in a row (an
+// import saves OD events, then logs). Overlapping runs both read the tracker
+// before either saved it, so each OD reminder was sent twice. Run them one at a time.
+let proactiveAlertsQueue: Promise<void> = Promise.resolve();
+
+export const runProactiveAlerts = (
+  input: Parameters<typeof runProactiveAlertsNow>[0],
+): Promise<void> => {
+  const run = proactiveAlertsQueue.then(() => runProactiveAlertsNow(input));
+  proactiveAlertsQueue = run.catch(() => undefined);
+  return run;
+};
+
+const runProactiveAlertsNow = async ({
   notificationSettings,
   summaries,
   subjects,
@@ -173,7 +198,7 @@ export const runProactiveAlerts = async ({
   const tracker = await readTracker();
   const subjectLookup = new Map(subjects.map((subject) => [subject.id, subject]));
   let trackerChanged = false;
-  const scheduledTasks: Promise<void>[] = [];
+  const scheduledTasks: (() => Promise<void>)[] = [];
 
   if (notificationSettings.lowAttendanceAlertsEnabled) {
     summaries.forEach((summary) => {
@@ -198,7 +223,7 @@ export const runProactiveAlerts = async ({
 
       tracker.lowAttendance[summary.subjectId] = today;
       trackerChanged = true;
-      scheduledTasks.push(
+      scheduledTasks.push(() =>
         safeSchedule(() =>
           scheduleLowAttendanceAlert({
             subjectName,
@@ -223,7 +248,7 @@ export const runProactiveAlerts = async ({
 
       tracker.odPending[event.id] = today;
       trackerChanged = true;
-      scheduledTasks.push(
+      scheduledTasks.push(() =>
         safeSchedule(() => scheduleODPendingReminder(event.name)),
       );
     });
@@ -239,9 +264,10 @@ export const runProactiveAlerts = async ({
     trackerChanged = true;
   }
 
-  await Promise.all(scheduledTasks);
-
+  // Record what was sent before sending it, so a crash mid-send can't repeat it.
   if (trackerChanged) {
     await saveTracker(tracker);
   }
+
+  await Promise.all(scheduledTasks.map((send) => send()));
 };

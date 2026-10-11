@@ -107,3 +107,30 @@ describe("storage", () => {
     expect(hourSlotBundle.workingDateOverrides["2026-04-04"]).toBe(true);
   });
 });
+
+describe("parseBackup", () => {
+  const { parseBackup } = jest.requireActual("@/lib/storage") as typeof import("@/lib/storage");
+  const valid = {
+    studentBundle: { student: null, notificationSettings: {}, examWeek: { enabled: false } },
+    hourSlotBundle: { hourSlots: [], workingDays: ["Mon"], workingDateOverrides: {} },
+    subjects: [],
+    timetable: [],
+    dailyLogs: [],
+    odEvents: [],
+    onboarded: true,
+  };
+
+  it("accepts a backup exported by the app", () => {
+    expect(parseBackup(JSON.stringify(valid))).toEqual(valid);
+  });
+
+  it("rejects text that isn't JSON", () => {
+    expect(() => parseBackup("not json")).toThrow("not JSON");
+  });
+
+  it("rejects JSON that is missing parts of a backup", () => {
+    const { dailyLogs: _dailyLogs, ...missingLogs } = valid;
+    expect(() => parseBackup(JSON.stringify(missingLogs))).toThrow("nothing was restored");
+    expect(() => parseBackup("[]")).toThrow("isn't a valid AttendX backup");
+  });
+});

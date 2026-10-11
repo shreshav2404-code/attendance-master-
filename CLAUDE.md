@@ -42,6 +42,15 @@ device; the only network call is the update-manifest check in `lib/appUpdate.ts`
 - Pending-OD adjustments (Settings manual add / file import) are `ODEvent`s with `source` set (older ones are
   named "Manual Pending OD · …" / "Pending OD · …"; see `isPendingODAdjustment`). They never fill, lock or get
   overwritten by the Today screen and aren't offered in its OD picker.
+- Official sync rules (`lib/calculations.ts`, `lib/sync.ts`, covered by `__tests__/syncScenarios.test.ts`):
+  the snapshot's TH/AH/DL stand for everything up to `syncedAt`; only entries created after the sync **and**
+  dated on/after the sync day add to TH/AH. Pending OD is always "all tracked OD hours − registered hours"
+  (event flags, plus `registeredHours` that sync sets on OD entries without an event), never "since the sync".
+  When re-saving or replacing an existing entry, keep its `createdAt`.
+- expo-notifications 0.29 needs an explicit trigger `type` (e.g. `SchedulableTriggerInputTypes.DAILY`); a
+  typeless `{ hour, minute }` trigger fires immediately on Android. `runProactiveAlerts` is queued so
+  overlapping calls can't send the same reminder twice.
+- Settings toasts: error paths call `warnFeedback()` (warning icon + haptic), successes `successFeedback()`.
 - Destructive actions go through `confirmAction` (`lib/confirm.ts`); `Alert.alert` is a no-op on web.
 - Web build is preview-only: `TrendChart` shows a text fallback there (Skia needs CanvasKit on web).
 

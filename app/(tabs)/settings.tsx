@@ -26,14 +26,16 @@ import {
   DEFAULT_WORKING_DAYS,
 } from "@/lib/constants";
 import { triggerSuccessHaptic, triggerTapHaptic, triggerWarningHaptic } from "@/lib/haptics";
+import { isValidReminderTime } from "@/lib/notifications";
 import {
   checkForAppUpdate,
+  getConfiguredUpdateUrl,
   getCurrentAppVersion,
   type AppUpdateResult,
 } from "@/lib/appUpdate";
 import { generateAttendancePdf, shareAttendancePdf } from "@/lib/pdf";
 import { shareAttendanceSummary, buildShareSummary } from "@/lib/share";
-import { clearAllStorage, exportBackup, restoreBackup } from "@/lib/storage";
+import { clearAllStorage, exportBackup, parseBackup, restoreBackup } from "@/lib/storage";
 import { applyOfficialSync } from "@/lib/sync";
 import {
   buildOfficialImportPlan,
@@ -102,6 +104,17 @@ export default function SettingsScreen() {
   const { summaries, overall } = useAttendanceSummary();
   const { initializeNotifications } = useNotifications();
   const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState<"success" | "warning">("success");
+  // Every error path plays the warning haptic, so use these to also pick the
+  // toast's icon (errors used to show a green success tick).
+  const warnFeedback = async () => {
+    setToastType("warning");
+    await triggerWarningHaptic();
+  };
+  const successFeedback = async () => {
+    setToastType("success");
+    await triggerSuccessHaptic();
+  };
   const [syncPrefillRows, setSyncPrefillRows] = useState<OfficialSubjectInput[]>([]);
   const [syncImportLoading, setSyncImportLoading] = useState(false);
   const [syncImportSummary, setSyncImportSummary] = useState("");
@@ -191,6 +204,7 @@ export default function SettingsScreen() {
 
       if (result.error) {
         setToastMessage(result.error);
+        setToastType("warning");
         await triggerWarningHaptic();
         setTimeout(() => setToastMessage(""), 2200);
         return;
@@ -198,6 +212,7 @@ export default function SettingsScreen() {
 
       if (result.isForceUpdate) {
         setToastMessage("Mandatory update available. Please update to continue safely.");
+        setToastType("warning");
         await triggerWarningHaptic();
         setTimeout(() => setToastMessage(""), 2600);
         return;
@@ -209,6 +224,7 @@ export default function SettingsScreen() {
 
       if (result.isUpdateAvailable) {
         setToastMessage("New update available.");
+        setToastType("success");
         await triggerSuccessHaptic();
         setTimeout(() => setToastMessage(""), 1800);
         return;
@@ -216,13 +232,15 @@ export default function SettingsScreen() {
 
       if (result.updateUrl && !result.manifest) {
         setToastMessage("Direct APK link is ready.");
+        setToastType("success");
         await triggerSuccessHaptic();
         setTimeout(() => setToastMessage(""), 1800);
         return;
       }
 
       setToastMessage("You are already on the latest version.");
-      await triggerSuccessHaptic();
+      setToastType("success");
+        await triggerSuccessHaptic();
       setTimeout(() => setToastMessage(""), 1800);
     } finally {
       setCheckingUpdates(false);
@@ -239,7 +257,7 @@ export default function SettingsScreen() {
     const updateUrl = updateCheck?.updateUrl;
     if (!updateUrl) {
       setToastMessage("Update link unavailable. Configure release manifest first.");
-      await triggerWarningHaptic();
+      await warnFeedback();
       setTimeout(() => setToastMessage(""), 2400);
       return;
     }
@@ -248,11 +266,11 @@ export default function SettingsScreen() {
       try {
         await Linking.openURL(updateUrl);
         setToastMessage("Opening update page.");
-        await triggerSuccessHaptic();
+        await successFeedback();
         setTimeout(() => setToastMessage(""), 2200);
       } catch {
         setToastMessage("Unable to open update link.");
-        await triggerWarningHaptic();
+        await warnFeedback();
         setTimeout(() => setToastMessage(""), 2200);
       }
       return;
@@ -309,13 +327,13 @@ export default function SettingsScreen() {
       }
 
       setToastMessage("APK downloaded. Continue install from package installer.");
-      await triggerSuccessHaptic();
+      await successFeedback();
       setTimeout(() => setToastMessage(""), 2200);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Unable to download update.";
       setToastMessage(message);
-      await triggerWarningHaptic();
+      await warnFeedback();
       setTimeout(() => setToastMessage(""), 2200);
     } finally {
       setDownloadingUpdate(false);
@@ -328,7 +346,7 @@ export default function SettingsScreen() {
 
     if (!CREATOR_UPI_CONFIG.upiId.trim()) {
       setToastMessage("Set your UPI ID in settings.tsx to enable payments");
-      await triggerWarningHaptic();
+      await warnFeedback();
       setTimeout(() => setToastMessage(""), 2200);
       return;
     }
@@ -344,12 +362,12 @@ export default function SettingsScreen() {
 
       await Linking.openURL(upiUrl);
       setToastMessage("Opened UPI app");
-      await triggerSuccessHaptic();
+      await successFeedback();
       setTimeout(() => setToastMessage(""), 1800);
     } catch {
       setUpiQrVisible(true);
       setToastMessage("UPI app not available. Showing QR.");
-      await triggerWarningHaptic();
+      await warnFeedback();
       setTimeout(() => setToastMessage(""), 2200);
     }
   };
@@ -374,7 +392,7 @@ export default function SettingsScreen() {
       const pickedAsset = pickedDocument.assets[0];
       if (!pickedAsset) {
         setToastMessage("No file selected");
-        await triggerWarningHaptic();
+        await warnFeedback();
         setTimeout(() => setToastMessage(""), 1800);
         return;
       }
@@ -390,7 +408,7 @@ export default function SettingsScreen() {
 
       if (importPlan.officialInputs.length === 0) {
         setToastMessage("No valid course rows found in the report");
-        await triggerWarningHaptic();
+        await warnFeedback();
         setTimeout(() => setToastMessage(""), 2200);
         return;
       }
@@ -419,7 +437,7 @@ export default function SettingsScreen() {
       const summary = `Imported ${importedCount} courses${studentLabel}. Matched ${matchedCount}, created ${createdCount} new subjects.`;
       setSyncImportSummary(summary);
       setToastMessage("Report imported. Review values, then tap Compare and apply.");
-      await triggerSuccessHaptic();
+      await successFeedback();
       setTimeout(() => setToastMessage(""), 2200);
     } catch (error) {
       const message =
@@ -427,7 +445,7 @@ export default function SettingsScreen() {
           ? error.message
           : "Could not parse Excel file. Please verify report format.";
       setToastMessage(message);
-      await triggerWarningHaptic();
+      await warnFeedback();
       setTimeout(() => setToastMessage(""), 2600);
     } finally {
       setSyncImportLoading(false);
@@ -449,7 +467,7 @@ export default function SettingsScreen() {
 
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       setToastMessage("Date must be YYYY-MM-DD");
-      await triggerWarningHaptic();
+      await warnFeedback();
       setTimeout(() => setToastMessage(""), 1800);
       return;
     }
@@ -457,7 +475,7 @@ export default function SettingsScreen() {
     const subject = subjects.find((item) => item.id === subjectId);
     if (!subject) {
       setToastMessage("Select a valid subject");
-      await triggerWarningHaptic();
+      await warnFeedback();
       setTimeout(() => setToastMessage(""), 1800);
       return;
     }
@@ -465,7 +483,7 @@ export default function SettingsScreen() {
     const safeHours = Number(hours);
     if (!Number.isFinite(safeHours) || safeHours <= 0) {
       setToastMessage("Hours must be greater than 0");
-      await triggerWarningHaptic();
+      await warnFeedback();
       setTimeout(() => setToastMessage(""), 1800);
       return;
     }
@@ -505,7 +523,7 @@ export default function SettingsScreen() {
     await setDailyLogs([...latestLogs, nextLog]);
 
     setToastMessage(`Added ${safeHours}h pending OD for ${subject.shortName}`);
-    await triggerSuccessHaptic();
+    await successFeedback();
     setTimeout(() => setToastMessage(""), 1800);
   };
 
@@ -515,8 +533,13 @@ export default function SettingsScreen() {
 
     try {
       const pickedDocument = await DocumentPicker.getDocumentAsync({
+        // Android labels .csv files "text/comma-separated-values", so asking only
+        // for "text/csv" hid every CSV in the file picker.
         type: [
           "text/csv",
+          "text/comma-separated-values",
+          "application/csv",
+          "text/x-csv",
           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
           "application/vnd.ms-excel",
         ],
@@ -530,7 +553,7 @@ export default function SettingsScreen() {
       const pickedAsset = pickedDocument.assets[0];
       if (!pickedAsset) {
         setToastMessage("No file selected");
-        await triggerWarningHaptic();
+        await warnFeedback();
         setTimeout(() => setToastMessage(""), 1800);
         return;
       }
@@ -538,7 +561,9 @@ export default function SettingsScreen() {
       const normalizedName = (pickedAsset.name ?? "").toLowerCase();
       const normalizedMimeType = (pickedAsset.mimeType ?? "").toLowerCase();
       const isCsvFile =
-        normalizedName.endsWith(".csv") || normalizedMimeType.includes("csv");
+        normalizedName.endsWith(".csv") ||
+        normalizedMimeType.includes("csv") ||
+        normalizedMimeType.includes("comma-separated");
       const fileContent = await FileSystem.readAsStringAsync(pickedAsset.uri, {
         encoding: isCsvFile
           ? FileSystem.EncodingType.UTF8
@@ -561,7 +586,7 @@ export default function SettingsScreen() {
             : "No valid pending OD rows imported.",
         );
         setToastMessage("No pending OD rows were imported");
-        await triggerWarningHaptic();
+        await warnFeedback();
         setTimeout(() => setToastMessage(""), 2200);
         return;
       }
@@ -581,7 +606,7 @@ export default function SettingsScreen() {
       const summary = `Imported ${importPlan.odEvents.length} pending OD rows. Matched ${matchedCount}, created ${importPlan.createdSubjects.length} subjects, skipped ${importPlan.skippedRows.length}.`;
       setPendingImportSummary(summary);
       setToastMessage("Pending OD file imported");
-      await triggerSuccessHaptic();
+      await successFeedback();
       setTimeout(() => setToastMessage(""), 2200);
     } catch (error) {
       const message =
@@ -589,7 +614,7 @@ export default function SettingsScreen() {
           ? error.message
           : "Could not import pending OD file.";
       setToastMessage(message);
-      await triggerWarningHaptic();
+      await warnFeedback();
       setTimeout(() => setToastMessage(""), 2600);
     } finally {
       setPendingImportLoading(false);
@@ -610,7 +635,7 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background">
-      <Toast visible={Boolean(toastMessage)} message={toastMessage} />
+      <Toast visible={Boolean(toastMessage)} message={toastMessage} type={toastType} />
       <ScrollView
         nestedScrollEnabled
         keyboardDismissMode="on-drag"
@@ -658,12 +683,34 @@ export default function SettingsScreen() {
             style={{ marginTop: 16 }}
             onPress={async () => {
               await triggerTapHaptic();
+              const targetPercentage = Number(profile.targetPercentage.trim());
+
+              // A non-number or out-of-range target broke every "hours needed" figure.
+              if (
+                !Number.isInteger(targetPercentage) ||
+                targetPercentage < 1 ||
+                targetPercentage > 100
+              ) {
+                setToastMessage("Target % must be a whole number from 1 to 100");
+                await warnFeedback();
+                setTimeout(() => setToastMessage(""), 2200);
+                return;
+              }
+
+              if (!profile.name.trim()) {
+                setToastMessage("Name can't be empty");
+                await warnFeedback();
+                setTimeout(() => setToastMessage(""), 2200);
+                return;
+              }
+
               await updateStudent({
                 ...profile,
-                targetPercentage: Number(profile.targetPercentage || 75),
+                name: profile.name.trim(),
+                targetPercentage,
               });
               setToastMessage("Profile updated");
-              await triggerSuccessHaptic();
+              await successFeedback();
               setTimeout(() => setToastMessage(""), 1800);
             }}
           >
@@ -697,7 +744,8 @@ export default function SettingsScreen() {
             hourSlots={hourSlots}
             workingDays={workingDays}
             onImport={applyTimetableImport}
-            onToast={(message) => {
+            onToast={(message, type = "success") => {
+              setToastType(type);
               setToastMessage(message);
               setTimeout(() => setToastMessage(""), 2000);
             }}
@@ -718,15 +766,19 @@ export default function SettingsScreen() {
                 officialInputs,
                 summaries,
                 odEvents,
+                dailyLogs,
               });
               void setODEvents(result.odEvents);
+              if (result.dailyLogs !== dailyLogs) {
+                void setDailyLogs(result.dailyLogs);
+              }
               void setLastSyncedAt(result.lastSyncedAt);
               void setOfficialSyncSnapshotBySubject({
                 ...officialSyncSnapshotBySubject,
                 ...result.officialSyncSnapshotBySubject,
               });
               setToastMessage("Official sync applied");
-              void triggerSuccessHaptic();
+              void successFeedback();
               setTimeout(() => setToastMessage(""), 1800);
               return result.reports;
             }}
@@ -804,7 +856,7 @@ export default function SettingsScreen() {
                   setToastMessage(
                     nextValue.enabled ? "Exam week on" : "Exam week off",
                   );
-                  void triggerSuccessHaptic();
+                  void successFeedback();
                   setTimeout(() => setToastMessage(""), 1800);
                 }
               }}
@@ -846,7 +898,7 @@ export default function SettingsScreen() {
 
                 if (!/^\d{4}-\d{2}-\d{2}$/.test(saturdayDate)) {
                   setToastMessage("Enter date as YYYY-MM-DD");
-                  await triggerWarningHaptic();
+                  await warnFeedback();
                   setTimeout(() => setToastMessage(""), 1800);
                   return;
                 }
@@ -856,14 +908,14 @@ export default function SettingsScreen() {
                   dayLabel = formatDateLabel(saturdayDate, "EEE");
                 } catch {
                   setToastMessage("Invalid date");
-                  await triggerWarningHaptic();
+                  await warnFeedback();
                   setTimeout(() => setToastMessage(""), 1800);
                   return;
                 }
 
                 if (dayLabel !== "Sat") {
                   setToastMessage("Pick a Saturday date");
-                  await triggerWarningHaptic();
+                  await warnFeedback();
                   setTimeout(() => setToastMessage(""), 1800);
                   return;
                 }
@@ -874,7 +926,7 @@ export default function SettingsScreen() {
                     ? "Saturday marked as working"
                     : "Saturday marked as holiday",
                 );
-                await triggerSuccessHaptic();
+                await successFeedback();
                 setTimeout(() => setToastMessage(""), 1800);
               }}
             >
@@ -887,7 +939,7 @@ export default function SettingsScreen() {
                 await triggerTapHaptic();
                 await removeWorkingDateOverride(saturdayDate);
                 setToastMessage("Saturday override removed");
-                await triggerSuccessHaptic();
+                await successFeedback();
                 setTimeout(() => setToastMessage(""), 1800);
               }}
             >
@@ -952,6 +1004,11 @@ export default function SettingsScreen() {
               }
               style={{ backgroundColor: "transparent" }}
             />
+            {!isValidReminderTime(notificationSettings.dailyReminderTime) ? (
+              <Text className="-mt-2 font-inter text-xs text-red-300">
+                Use 24-hour HH:mm, e.g. 20:30. The reminder keeps its last valid time until then.
+              </Text>
+            ) : null}
             <View className="flex-row items-center justify-between">
               <Text className="font-inter text-sm text-white/70">
                 Low attendance alerts
@@ -984,7 +1041,7 @@ export default function SettingsScreen() {
                 await triggerTapHaptic();
                 await initializeNotifications();
                 setToastMessage("Notification preferences saved");
-                await triggerSuccessHaptic();
+                await successFeedback();
                 setTimeout(() => setToastMessage(""), 1800);
               }}
             >
@@ -1010,7 +1067,7 @@ export default function SettingsScreen() {
                 const uri = `${directory}attendx-backup-${Date.now()}.json`;
                 await FileSystem.writeAsStringAsync(uri, JSON.stringify(backup, null, 2));
                 await Sharing.shareAsync(uri);
-                await triggerSuccessHaptic();
+                await successFeedback();
               }}
             >
               Export JSON backup
@@ -1037,9 +1094,19 @@ export default function SettingsScreen() {
                 const fileContents = await FileSystem.readAsStringAsync(
                   pickedAsset.uri,
                 );
-                const backup = JSON.parse(fileContents) as Awaited<
-                  ReturnType<typeof exportBackup>
-                >;
+                let backup: ReturnType<typeof parseBackup>;
+
+                try {
+                  backup = parseBackup(fileContents);
+                } catch (error) {
+                  setToastMessage(
+                    error instanceof Error ? error.message : "Couldn't read that backup file.",
+                  );
+                  await warnFeedback();
+                  setTimeout(() => setToastMessage(""), 2600);
+                  return;
+                }
+
                 await restoreBackup(backup);
 
                 useStudentStore.setState((currentValue) => ({
@@ -1071,7 +1138,7 @@ export default function SettingsScreen() {
                   odEvents: backup.odEvents,
                 }));
                 setToastMessage("Backup imported");
-                await triggerSuccessHaptic();
+                await successFeedback();
                 setTimeout(() => setToastMessage(""), 1800);
               }}
             >
@@ -1090,7 +1157,7 @@ export default function SettingsScreen() {
                 });
                 await shareAttendanceSummary(summaryText);
                 setToastMessage("Share summary copied and opened");
-                await triggerSuccessHaptic();
+                await successFeedback();
                 setTimeout(() => setToastMessage(""), 1800);
               }}
             >
@@ -1112,7 +1179,7 @@ export default function SettingsScreen() {
                   endDate: getTodayKey(),
                 });
                 await shareAttendancePdf(uri);
-                await triggerSuccessHaptic();
+                await successFeedback();
               }}
             >
               Export PDF report
@@ -1121,7 +1188,7 @@ export default function SettingsScreen() {
               mode="contained"
               buttonColor="#7f1d1d"
               onPress={async () => {
-                await triggerWarningHaptic();
+                await warnFeedback();
                 const confirmed = await confirmAction({
                   title: "Clear all data?",
                   message:
@@ -1320,12 +1387,13 @@ export default function SettingsScreen() {
             style={{ marginTop: 16 }}
             onPress={async () => {
               await triggerTapHaptic();
+              // The GitHub repo is private, so its releases link 404s for anyone
+              // the message is sent to; share the app's own APK download link.
+              const downloadUrl = getConfiguredUpdateUrl();
               await Share.share({
                 message: [
                   "AttendX helps you track physical attendance, official OD, and projected recovery in one place.",
-                  "",
-                  "Follow updates:",
-                  "https://github.com/shreshav2404-code/attendance-master-/releases",
+                  ...(downloadUrl ? ["", "Download the Android app:", downloadUrl] : []),
                   "",
                   "Checkout my portfolio:",
                   "https://portfolio-keshav.vercel.app",
@@ -1334,7 +1402,7 @@ export default function SettingsScreen() {
                   "https://instagram.com/the_jha_keshav2404",
                 ].join("\n"),
               });
-              await triggerSuccessHaptic();
+              await successFeedback();
             }}
           >
             Share app link
@@ -1366,7 +1434,7 @@ export default function SettingsScreen() {
                 await triggerTapHaptic();
                 await Clipboard.setStringAsync(CREATOR_UPI_CONFIG.upiId);
                 setToastMessage("UPI ID copied");
-                await triggerSuccessHaptic();
+                await successFeedback();
                 setTimeout(() => setToastMessage(""), 1800);
               }}
             >

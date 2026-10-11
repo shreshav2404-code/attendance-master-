@@ -55,12 +55,14 @@ const CircularProgress = ({
           strokeWidth="10"
         />
       </Svg>
-      <View className="absolute items-center">
+      {/* Inner diameter is about 78dp, so keep "100.00%" inside the ring. */}
+      <View className="absolute w-[76px] items-center">
         <AnimatedNumber
           value={progress}
           decimals={2}
           suffix="%"
-          className="font-inter-bold text-xl text-white"
+          fitOneLine
+          className="font-inter-bold text-base text-white"
         />
         <Text className="font-inter text-xs text-white/65">Projected</Text>
       </View>
@@ -115,40 +117,36 @@ export const OverallBanner = ({
 
       <View className={compactLayout ? "gap-5" : "flex-row items-center gap-5"}>
         <View className="flex-1 gap-4">
-          <View className="rounded-[24px] border border-white/10 bg-black/10 p-4">
+          {/* One stage per line: three percentages in a single row overflowed
+              into the ring beside it on ~410dp phones. */}
+          <View className="rounded-[24px] border border-white/10 bg-black/10 px-4 py-3">
             <Text className="font-inter text-[11px] uppercase tracking-[1px] text-white/55">
-              Before OD → +Official OD → +Pending OD
+              Attendance with OD
             </Text>
-            <View
-              className={`mt-3 ${compactLayout ? "flex-row flex-wrap gap-y-2" : "flex-row items-end gap-2"}`}
-            >
-              <View className={compactLayout ? "min-w-[32%] pr-2" : undefined}>
+            {[
+              { label: "Before OD", value: overall.percentBefore },
+              { label: "+ Official", value: overall.percentAfterDL },
+              { label: "+ Pending", value: overall.percentProjected },
+            ].map((stage) => (
+              <View
+                key={stage.label}
+                className="mt-2 flex-row items-center justify-between gap-2"
+              >
+                <Text
+                  numberOfLines={1}
+                  className="shrink font-inter text-xs text-white/60"
+                >
+                  {stage.label}
+                </Text>
                 <AnimatedNumber
-                  value={overall.percentBefore}
+                  value={stage.value}
                   decimals={2}
                   suffix="%"
-                  className={compactLayout ? "font-inter-bold text-lg text-white" : "font-inter-bold text-xl text-white"}
+                  fitOneLine
+                  className="font-inter-bold text-base text-white"
                 />
               </View>
-              <Text className="pb-1 font-inter-medium text-sm text-white/55">→</Text>
-              <View className={compactLayout ? "min-w-[32%] pr-2" : undefined}>
-                <AnimatedNumber
-                  value={overall.percentAfterDL}
-                  decimals={2}
-                  suffix="%"
-                  className={compactLayout ? "font-inter-bold text-lg text-white" : "font-inter-bold text-xl text-white"}
-                />
-              </View>
-              <Text className="pb-1 font-inter-medium text-sm text-white/55">→</Text>
-              <View className={compactLayout ? "min-w-[32%]" : undefined}>
-                <AnimatedNumber
-                  value={overall.percentProjected}
-                  decimals={2}
-                  suffix="%"
-                  className={compactLayout ? "font-inter-bold text-lg text-white" : "font-inter-bold text-xl text-white"}
-                />
-              </View>
-            </View>
+            ))}
           </View>
 
           <View>

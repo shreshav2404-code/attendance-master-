@@ -21,7 +21,7 @@ export default function ODTabScreen() {
   const { timetable } = useTimetable();
   const { workingDays, workingDateOverrides } = useStudent();
   const { odEvents, addODEvent } = useODEvents();
-  const { upsertLogs } = useDailyLog();
+  const { dailyLogs, upsertLogs } = useDailyLog();
   const deleteODEvent = useDeleteODEvent();
   const [sheetVisible, setSheetVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
@@ -58,7 +58,17 @@ export default function ODTabScreen() {
         onCreate={async (odEvent, logs) => {
           await triggerTapHaptic();
           await addODEvent(odEvent);
-          await upsertLogs(logs);
+          // An OD that replaces an already-marked class keeps that entry's
+          // createdAt, so a class already covered by a sync isn't counted twice.
+          const existingCreatedAt = new Map(
+            dailyLogs.map((log) => [log.id, log.createdAt]),
+          );
+          await upsertLogs(
+            logs.map((log) => ({
+              ...log,
+              createdAt: existingCreatedAt.get(log.id) ?? log.createdAt,
+            })),
+          );
           setToastMessage("OD event created");
           await triggerSuccessHaptic();
           setTimeout(() => setToastMessage(""), 1800);

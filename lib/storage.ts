@@ -178,6 +178,42 @@ export const exportBackup = async (): Promise<AppBackupPayload> => {
   };
 };
 
+// Checks a backup file's contents before anything is overwritten, so a wrong or
+// damaged file is rejected with a message instead of corrupting the app's data.
+export const parseBackup = (text: string): AppBackupPayload => {
+  let value: unknown;
+
+  try {
+    value = JSON.parse(text);
+  } catch {
+    throw new Error("This file isn't a valid AttendX backup (not JSON).");
+  }
+
+  const isObject = (item: unknown): item is Record<string, unknown> =>
+    typeof item === "object" && item !== null && !Array.isArray(item);
+
+  if (!isObject(value)) {
+    throw new Error("This file isn't a valid AttendX backup.");
+  }
+
+  const { studentBundle, hourSlotBundle } = value;
+  const listKeys = ["subjects", "timetable", "dailyLogs", "odEvents"] as const;
+  const valid =
+    isObject(studentBundle) &&
+    "student" in studentBundle &&
+    isObject(hourSlotBundle) &&
+    Array.isArray(hourSlotBundle.hourSlots) &&
+    Array.isArray(hourSlotBundle.workingDays) &&
+    listKeys.every((key) => Array.isArray(value[key])) &&
+    typeof value.onboarded === "boolean";
+
+  if (!valid) {
+    throw new Error("This file is missing parts of an AttendX backup, so nothing was restored.");
+  }
+
+  return value as unknown as AppBackupPayload;
+};
+
 export const restoreBackup = async (backup: AppBackupPayload): Promise<void> => {
   await Promise.all([
     saveStudentBundle(backup.studentBundle),

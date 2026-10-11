@@ -1,3 +1,4 @@
+import * as FileSystem from "expo-file-system";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 
@@ -182,7 +183,25 @@ export const generateAttendancePdf = async ({
     endDate,
   });
   const file = await Print.printToFileAsync({ html });
-  return file.uri;
+
+  // printToFileAsync names the file with a random UUID; give the shared PDF a
+  // readable name. Fall back to the original file if the copy fails.
+  const safeRollNo = student.rollNo.replace(/[^A-Za-z0-9_-]/g, "");
+  const fileName = `AttendX-report-${safeRollNo ? `${safeRollNo}-` : ""}${endDate}.pdf`;
+  const directory = FileSystem.cacheDirectory;
+
+  if (!directory) {
+    return file.uri;
+  }
+
+  try {
+    const namedUri = `${directory}${fileName}`;
+    await FileSystem.deleteAsync(namedUri, { idempotent: true });
+    await FileSystem.copyAsync({ from: file.uri, to: namedUri });
+    return namedUri;
+  } catch {
+    return file.uri;
+  }
 };
 
 export const shareAttendancePdf = async (uri: string): Promise<void> => {
@@ -192,5 +211,9 @@ export const shareAttendancePdf = async (uri: string): Promise<void> => {
     return;
   }
 
-  await Sharing.shareAsync(uri);
+  await Sharing.shareAsync(uri, {
+    mimeType: "application/pdf",
+    dialogTitle: "Share attendance report",
+    UTI: "com.adobe.pdf",
+  });
 };

@@ -59,6 +59,10 @@ export interface DailyLog {
   odEventId?: string;
   note?: string;
   createdAt: string;
+  // For an OD entry without an event: hours the official report has
+  // registered (set by sync). Event ODs track this on the event instead.
+  registeredHours?: number;
+  registeredAt?: string;
 }
 
 export interface ODEvent {
@@ -260,6 +264,7 @@ export interface PendingODImportPlan {
 export interface SyncApplicationResult {
   reports: SyncReport[];
   odEvents: ODEvent[];
+  dailyLogs: DailyLog[];
   lastSyncedAt: string;
   officialSyncSnapshotBySubject: OfficialSyncSnapshotBySubject;
 }

@@ -130,8 +130,30 @@ const normalizeManifest = (value: unknown): ReleaseManifest => {
   };
 };
 
+// The release manifest is fetched from a public URL that anyone who knows it can
+// overwrite, so only follow download links to hosts the real releases use.
+const TRUSTED_UPDATE_HOSTS = ["expo.dev", "github.com", "githubusercontent.com", "apps.apple.com"];
+
+export const isTrustedUpdateUrl = (url: string): boolean => {
+  try {
+    const { protocol, hostname } = new URL(url);
+    return (
+      protocol === "https:" &&
+      TRUSTED_UPDATE_HOSTS.some((host) => hostname === host || hostname.endsWith(`.${host}`))
+    );
+  } catch {
+    return false;
+  }
+};
+
 export const resolveUpdateUrl = (manifest: ReleaseManifest): string | undefined => {
-  return manifest.apkUrl ?? manifest.iosStoreUrl ?? getConfiguredUpdateUrl();
+  const manifestUrl = manifest.apkUrl ?? manifest.iosStoreUrl;
+
+  if (manifestUrl && isTrustedUpdateUrl(manifestUrl)) {
+    return manifestUrl;
+  }
+
+  return getConfiguredUpdateUrl();
 };
 
 const buildDirectDownloadFallbackResult = ({
