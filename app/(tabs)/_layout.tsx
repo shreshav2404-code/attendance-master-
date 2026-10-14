@@ -10,6 +10,8 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
+        // More room above the keyboard for the text box being typed in.
+        tabBarHideOnKeyboard: true,
         tabBarActiveTintColor: "#f8fafc",
         tabBarInactiveTintColor: "rgba(248,250,252,0.45)",
         tabBarStyle: {

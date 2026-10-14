@@ -1,5 +1,6 @@
 import Constants from "expo-constants";
 import * as FileSystem from "expo-file-system";
+import * as IntentLauncher from "expo-intent-launcher";
 import * as Sharing from "expo-sharing";
 import { useEffect, useMemo, useState } from "react";
 import { Linking, Platform, Share, Text, View } from "react-native";
@@ -14,6 +15,9 @@ import {
   type AppUpdateResult,
 } from "@/lib/appUpdate";
 import { triggerTapHaptic } from "@/lib/haptics";
+
+/** android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION */
+const FLAG_GRANT_READ_URI_PERMISSION = 1;
 
 export default function UpdatesSettingsScreen() {
   const toast = useToast();
@@ -139,28 +143,26 @@ export default function UpdatesSettingsScreen() {
         throw new Error("APK download failed.");
       }
 
-      let openedInstaller = false;
+      // Hand the APK to Android's package installer: a VIEW intent with the APK
+      // type and read permission on a content:// uri. Linking.openURL sent neither,
+      // so nothing opened after the download reached 100%. Android asks once for
+      // "Allow from this source" (REQUEST_INSTALL_PACKAGES) before installing.
       try {
         const contentUri = await FileSystem.getContentUriAsync(result.uri);
-        await Linking.openURL(contentUri);
-        openedInstaller = true;
-      } catch {}
-
-      if (!openedInstaller) {
-        try {
-          await Linking.openURL(result.uri);
-          openedInstaller = true;
-        } catch {}
-      }
-
-      if (!openedInstaller) {
+        await IntentLauncher.startActivityAsync("android.intent.action.VIEW", {
+          data: contentUri,
+          type: "application/vnd.android.package-archive",
+          flags: FLAG_GRANT_READ_URI_PERMISSION,
+        });
+      } catch {
+        // No installer answered the intent; let the student pick one.
         await Sharing.shareAsync(result.uri, {
           mimeType: "application/vnd.android.package-archive",
           dialogTitle: "Install AttendX update",
         });
       }
 
-      await toast.success("APK downloaded. Continue install from package installer.", 2200);
+      await toast.success("Finish the update in Android's installer.", 2200);
     } catch (error) {
       await toast.warn(error instanceof Error ? error.message : "Unable to download update.");
     } finally {

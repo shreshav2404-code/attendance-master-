@@ -21,6 +21,8 @@ export interface Student {
   term: string;
   targetPercentage: number;
   createdAt: string;
+  /** Local file in the app's documents folder; missing after a restore on another phone. */
+  photoUri?: string;
 }
 
 export interface Subject {

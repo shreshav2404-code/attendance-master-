@@ -39,48 +39,49 @@ export const SettingsPage = ({
         message={toast.state.message}
         type={toast.state.type}
       />
+      {/* Pinned above the scroll so the menu is reachable from anywhere on the page. */}
+      <View className="flex-row items-center justify-between px-5 pb-2 pt-3">
+        {isSettingsTab ? (
+          <Text className="font-inter-bold text-3xl text-white">{title}</Text>
+        ) : (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Back"
+            hitSlop={10}
+            onPress={() => {
+              void triggerTapHaptic();
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace("/settings");
+              }
+            }}
+            className="h-10 w-10 items-center justify-center rounded-full bg-white/5"
+          >
+            <ArrowLeft color="#f8fafc" size={20} />
+          </Pressable>
+        )}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Open settings menu"
+          hitSlop={10}
+          onPress={() => {
+            void triggerTapHaptic();
+            setMenuVisible(true);
+          }}
+          className="h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5"
+        >
+          <Menu color="#f8fafc" size={20} />
+        </Pressable>
+      </View>
       <ScrollView
         nestedScrollEnabled
         keyboardDismissMode="on-drag"
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 40 }}
       >
-        <View className="flex-row items-center justify-between">
-          {isSettingsTab ? (
-            <Text className="font-inter-bold text-3xl text-white">{title}</Text>
-          ) : (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Back"
-              hitSlop={10}
-              onPress={() => {
-                void triggerTapHaptic();
-                if (router.canGoBack()) {
-                  router.back();
-                } else {
-                  router.replace("/settings");
-                }
-              }}
-              className="h-10 w-10 items-center justify-center rounded-full bg-white/5"
-            >
-              <ArrowLeft color="#f8fafc" size={20} />
-            </Pressable>
-          )}
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Open settings menu"
-            hitSlop={10}
-            onPress={() => {
-              void triggerTapHaptic();
-              setMenuVisible(true);
-            }}
-            className="h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5"
-          >
-            <Menu color="#f8fafc" size={20} />
-          </Pressable>
-        </View>
         {isSettingsTab ? null : (
-          <Text className="mt-4 font-inter-bold text-3xl text-white">{title}</Text>
+          <Text className="font-inter-bold text-3xl text-white">{title}</Text>
         )}
         {description ? (
           <Text className="mt-2 font-inter text-sm leading-6 text-white/65">

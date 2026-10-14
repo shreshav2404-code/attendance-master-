@@ -102,9 +102,9 @@ export const USER_MANUAL_SECTIONS: UserManualSection[] = [
     description:
       "The Settings tab shows your profile. Everything else has its own page in the ☰ menu at the top right.",
     steps: [
-      "Open the Settings tab to edit your profile and target %.",
+      "Open the Settings tab to edit your profile and target %. Tap your photo circle to add a profile photo.",
       "Tap ☰ at the top right of any Settings page.",
-      "Pick a page: OD, Official sync, Timetable, Exam week, Flexible Saturdays, Notifications, Data management, Updates & about, or this manual.",
+      "Pick a page: OD, Official sync, Timetable, Exam week, Flexible Saturdays, Notifications, Permissions, Data management, Updates & about, or this manual.",
       "Use the back arrow to return to your profile.",
     ],
   },

@@ -14,7 +14,7 @@ import {
   useSegments,
 } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Linking, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import {
@@ -31,12 +31,12 @@ import { COLORS } from "@/lib/constants";
 import {
   cancelDailyReminder,
   configureNotificationChannel,
-  requestNotificationPermissions,
   runProactiveAlerts,
   scheduleDailyReminder,
 } from "@/lib/notifications";
 import { useAttendanceStore } from "@/store/attendanceStore";
 import { useODStore } from "@/store/odStore";
+import { askForAppPermissionsOnce, ensureNotificationPermission } from "@/lib/permissions";
 import { useStudentStore } from "@/store/studentStore";
 import { useSubjectStore } from "@/store/subjectStore";
 
@@ -92,7 +92,6 @@ export default function RootLayout() {
   const subjectHydrated = useSubjectStore((state) => state.hydrated);
   const attendanceHydrated = useAttendanceStore((state) => state.hydrated);
   const odHydrated = useODStore((state) => state.hydrated);
-  const notificationsGrantedRef = useRef<boolean | null>(null);
   const [forceUpdateUrl, setForceUpdateUrl] = useState<string | undefined>(
     undefined,
   );
@@ -145,6 +144,13 @@ export default function RootLayout() {
     }
   }, [onboarded, ready, router, searchParams.mode, segments]);
 
+  // First run after setup: ask for every permission the app uses, one at a time.
+  useEffect(() => {
+    if (ready && onboarded) {
+      void askForAppPermissionsOnce();
+    }
+  }, [onboarded, ready]);
+
   useEffect(() => {
     if (!ready) {
       return;
@@ -153,11 +159,9 @@ export default function RootLayout() {
     let cancelled = false;
 
     const syncDailyReminder = async () => {
-      if (notificationsGrantedRef.current === null) {
-        notificationsGrantedRef.current = await requestNotificationPermissions();
-      }
+      const notificationsGranted = await ensureNotificationPermission();
 
-      if (!notificationsGrantedRef.current || cancelled) {
+      if (!notificationsGranted || cancelled) {
         return;
       }
 
@@ -190,11 +194,9 @@ export default function RootLayout() {
     let cancelled = false;
 
     const syncProactiveAlerts = async () => {
-      if (notificationsGrantedRef.current === null) {
-        notificationsGrantedRef.current = await requestNotificationPermissions();
-      }
+      const notificationsGranted = await ensureNotificationPermission();
 
-      if (!notificationsGrantedRef.current || cancelled) {
+      if (!notificationsGranted || cancelled) {
         return;
       }
 
@@ -262,8 +264,10 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <PaperProvider theme={paperTheme}>
-        <SafeAreaProvider>
+      {/* SafeAreaProvider wraps PaperProvider: menus and sheets render through
+          Paper's Portal (components/shared/Overlay.tsx) and need the insets. */}
+      <SafeAreaProvider>
+        <PaperProvider theme={paperTheme}>
           {ready ? (
             forceUpdateVersion ? (
               <View className="flex-1 items-center justify-center bg-background px-6">
@@ -320,8 +324,8 @@ export default function RootLayout() {
               <ActivityIndicator animating color={COLORS.secondary} size="large" />
             </View>
           )}
-        </SafeAreaProvider>
-      </PaperProvider>
+        </PaperProvider>
+      </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }

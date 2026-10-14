@@ -38,6 +38,22 @@ const buildWorkbookBase64 = (): string => {
 };
 
 describe("officialReportImport", () => {
+  it('reads the section from the newer "Batch/Section:" label', () => {
+    const worksheet = XLSX.utils.aoa_to_sheet([
+      ["Course Wise Report"],
+      ["Student Name: KESHAV KUMAR", "", "Roll No: 20241CAI0072", "Batch/Section: 2024CAI02", "Term: S5"],
+      ["Sl.No.", "Course Name", "TH", "AH", "DL", "AH + DL", "AH%", "AH+DL%"],
+      [1, "Deep Learning ( CAI2502 )", 24, 18, 1, 19, "75.00 %", "79.17 %"],
+    ]);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet 1");
+    const parsed = parseOfficialAttendanceWorkbook(
+      XLSX.write(workbook, { type: "base64", bookType: "xlsx" }),
+    );
+    expect(parsed.student.batch).toBe("2024CAI02");
+    expect(parsed.student.term).toBe("S5");
+  });
+
   it("parses the official attendance workbook rows and student metadata", () => {
     const base64 = buildWorkbookBase64();
     const parsed = parseOfficialAttendanceWorkbook(base64);

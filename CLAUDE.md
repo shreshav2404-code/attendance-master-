@@ -8,8 +8,8 @@ device; the only network call is the update-manifest check in `lib/appUpdate.ts`
 
 - `app/` — Expo Router screens. `_layout.tsx` hydrates all stores, gates onboarding, runs notifications and the
   force-update check. Tabs: `index` (dashboard), `today` (mark today's classes), `od` (OD manager), `settings`
-  (the profile page). Every other settings page is its own route in `app/settings/` (od, sync, timetable,
-  exam-week, saturdays, notifications, data, updates) plus `help/`, all opened from the ☰ menu
+  (the profile page, with an optional photo, `lib/profilePhoto.ts`). Every other settings page is its own route in
+  `app/settings/` (od, sync, timetable, exam-week, saturdays, notifications, permissions, data, updates) plus `help/`, all opened from the ☰ menu
   (`components/settings/SettingsMenu.tsx`) and framed by `SettingsPage` (back arrow, ☰, coffee/UPI card, toast).
   `onboarding/` is welcome → student-info → subjects → schedule → timetable → complete.
 - `store/` — four Zustand stores (student, subject+timetable, attendance logs, OD events). Each action updates
@@ -19,7 +19,7 @@ device; the only network call is the update-manifest check in `lib/appUpdate.ts`
   (`officialSyncSnapshotBySubject`) replaces history up to `syncedAt`; logs created later are added on top.
 - `lib/` imports: `officialReportImport.ts` (college Excel report via `xlsx`), `pendingODImport.ts`,
   `timetableShare.ts` (QR/code share: lz-string + zod-validated), `sync.ts`, `pdf.ts`, `share.ts`, `notifications.ts`,
-  `appUpdate.ts` (release manifest on jsonblob.com).
+  `appUpdate.ts` (release manifest on the AttendX VM), `backupRestore.ts` (pick + restore a JSON backup).
 - Timetable scan: `lib/timetableScan.ts` (pure) turns OCR output into a grid: day rows (or columns), class
   columns from the header times, break/lunch columns, merged cells, course codes (aSc PDFs: `CSE1500`,
   practical `CSE1500_P` → same subject), and batch-split cells (`B1`/`B2`, `Bat1`–`Bat4`). Device side in
@@ -66,6 +66,17 @@ device; the only network call is the update-manifest check in `lib/appUpdate.ts`
   `toast.success()`. Pass the controller to `SettingsPage`, which renders it.
 - ML Kit OCR: `android/app/build.gradle` excludes the Chinese/Devanagari/Japanese/Korean models the library bundles
   (Latin only) and `proguard-rules.pro` has the matching `-dontwarn` lines. Adding a native module means a rebuild.
+- Menus, sheets and dialogs use `components/shared/Overlay.tsx` (Paper Portal in the main window, back button
+  closes it), never react-native's `Modal`. `SafeAreaProvider` therefore wraps `PaperProvider` in `_layout.tsx`.
+- Never animate a transform with Moti (`from={{ translateX/Y }}`) on a view that holds buttons: Reanimated keeps
+  the starting offset in the layout tree, Pressables measure themselves there, and Pressability cancels the press
+  on the first touch move, so real finger taps fail while still taps work (S24+, which reports many small moves).
+  Slide or fade such views in with Reanimated `entering` animations (`SlideInRight`, `SlideInDown`, `FadeInDown`).
+- Keyboard: `styles.xml` opts out of Android 15+'s enforced edge-to-edge (`windowOptOutEdgeToEdgeEnforcement`,
+  on the splash and app themes) so `adjustResize` keeps text boxes above the keyboard. That opt-out stops
+  working once the app targets API 36; then handle IME insets instead (e.g. react-native-keyboard-controller).
+- Permissions (`lib/permissions.ts`): notifications and camera, asked once after setup
+  (`askForAppPermissionsOnce`, queued so dialogs don't collide) and shown in Settings ☰ › Permissions.
 - Destructive actions go through `confirmAction` (`lib/confirm.ts`); `Alert.alert` is a no-op on web.
 - Web build is preview-only: `TrendChart` shows a text fallback there (Skia needs CanvasKit on web).
 

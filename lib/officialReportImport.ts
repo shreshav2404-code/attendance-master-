@@ -83,7 +83,8 @@ const getStudentInfo = (rows: readonly unknown[][]): OfficialAttendanceStudentIn
         { key: "name", regex: /Student Name:\s*(.+)$/i },
         { key: "rollNo", regex: /Roll No:\s*(.+)$/i },
         { key: "registrationNo", regex: /Registration No:\s*(.+)$/i },
-        { key: "batch", regex: /Batch:\s*(.+)$/i },
+        // Presidency's current report labels it "Batch/Section: 2024CAI02".
+        { key: "batch", regex: /Batch(?:\s*\/\s*Section)?:\s*(.+)$/i },
         { key: "department", regex: /Department:\s*(.+)$/i },
         { key: "term", regex: /Term:\s*(.+)$/i },
         { key: "dateRange", regex: /Date range\s*:\s*(.+)$/i },

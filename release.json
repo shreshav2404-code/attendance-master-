@@ -1,9 +1,9 @@
 {
-    "latestVersion":  "9.1.1",
+    "latestVersion":  "9.1.4",
     "minimumVersion":  "8.0.10",
-    "apkUrl":  "https://attendx.centralindia.cloudapp.azure.com/AttendX-9.1.1.apk",
+    "apkUrl":  "https://attendx.centralindia.cloudapp.azure.com/AttendX-9.1.4.apk",
     "iosStoreUrl":  "",
-    "notes":  "AttendX 9.1.1 - Restore from backup on the welcome screen, new logo on the welcome screen",
-    "publishedAt":  "2026-10-14T09:48:46+05:30",
-    "sha256":  "f1993b7f1fd7505105e3f87519ee7ec063e23faebb9b34b785f9d8e7750b03ac"
+    "notes":  "AttendX 9.1.4 - Menu, sheet and close buttons now respond to every tap (Android 17 / S24+); sheets stay on screen while typing",
+    "publishedAt":  "2026-10-14T14:18:22+05:30",
+    "sha256":  "30159fe51ae92ff9a9ec524edeaebea4b027592f0fc2cb0b46cf9aecab4f409e"
 }

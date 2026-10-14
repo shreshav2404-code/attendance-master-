@@ -1,12 +1,16 @@
+import { Camera } from "lucide-react-native";
 import { useEffect, useState } from "react";
-import { Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { Button, TextInput } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { SettingsPage } from "@/components/settings/SettingsPage";
+import { BottomSheet } from "@/components/shared/BottomSheet";
+import { ProfileAvatar } from "@/components/shared/ProfileAvatar";
 import { useStudent } from "@/hooks/useStudent";
 import { useToast } from "@/hooks/useToast";
 import { triggerTapHaptic } from "@/lib/haptics";
+import { pickProfilePhoto, removeProfilePhoto } from "@/lib/profilePhoto";
 import type { Student } from "@/types";
 
 const PROFILE_FIELDS = [
@@ -29,20 +33,35 @@ const toProfileForm = (student: Student | null) => ({
   targetPercentage: String(student?.targetPercentage ?? 75),
 });
 
-const getInitials = (name: string): string =>
-  name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? "")
-    .join("") || "?";
-
 // The Settings tab is the profile page; everything else opens from the ☰ menu
 // (components/settings/SettingsMenu.tsx) as its own page under app/settings/.
 export default function SettingsScreen() {
   const { student, updateStudent } = useStudent();
   const toast = useToast();
   const [profile, setProfile] = useState(() => toProfileForm(student));
+  const [photoSheetVisible, setPhotoSheetVisible] = useState(false);
+
+  const changePhoto = async (source: "camera" | "library") => {
+    void triggerTapHaptic();
+    setPhotoSheetVisible(false);
+    try {
+      const photoUri = await pickProfilePhoto(source, student?.photoUri);
+      if (photoUri) {
+        await updateStudent({ photoUri });
+        await toast.success("Profile photo updated");
+      }
+    } catch (error) {
+      await toast.warn(error instanceof Error ? error.message : "Couldn't update the photo.");
+    }
+  };
+
+  const removePhoto = async () => {
+    void triggerTapHaptic();
+    setPhotoSheetVisible(false);
+    await removeProfilePhoto(student?.photoUri);
+    await updateStudent({ photoUri: undefined });
+    await toast.success("Profile photo removed");
+  };
 
   useEffect(() => {
     setProfile(toProfileForm(student));
@@ -72,11 +91,20 @@ export default function SettingsScreen() {
       toast={toast}
     >
       <View className="mt-6 flex-row items-center rounded-[28px] border border-white/10 bg-white/5 p-4">
-        <View className="h-14 w-14 items-center justify-center rounded-full bg-[#1d4ed8]">
-          <Text className="font-inter-bold text-xl text-white">
-            {getInitials(student.name)}
-          </Text>
-        </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Change profile photo"
+          hitSlop={8}
+          onPress={() => {
+            void triggerTapHaptic();
+            setPhotoSheetVisible(true);
+          }}
+        >
+          <ProfileAvatar name={student.name} photoUri={student.photoUri} size={64} />
+          <View className="absolute -bottom-0.5 -right-0.5 h-6 w-6 items-center justify-center rounded-full border-2 border-background bg-[#2563eb]">
+            <Camera color="#f8fafc" size={12} />
+          </View>
+        </Pressable>
         <View className="ml-4 flex-1">
           <Text className="font-inter-bold text-lg text-white" numberOfLines={1}>
             {student.name}
@@ -145,6 +173,25 @@ export default function SettingsScreen() {
           Save profile
         </Button>
       </View>
+      <BottomSheet
+        visible={photoSheetVisible}
+        title="Profile photo"
+        onClose={() => setPhotoSheetVisible(false)}
+      >
+        <View className="gap-3">
+          <Button mode="contained" icon="image" onPress={() => void changePhoto("library")}>
+            Choose from gallery
+          </Button>
+          <Button mode="contained-tonal" icon="camera" onPress={() => void changePhoto("camera")}>
+            Take a photo
+          </Button>
+          {student.photoUri ? (
+            <Button mode="outlined" icon="delete" textColor="#fca5a5" onPress={() => void removePhoto()}>
+              Remove photo
+            </Button>
+          ) : null}
+        </View>
+      </BottomSheet>
     </SettingsPage>
   );
 }

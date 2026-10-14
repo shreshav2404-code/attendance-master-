@@ -1,7 +1,7 @@
 {
   "name": "attendx",
   "main": "expo-router/entry",
-  "version": "9.1.1",
+  "version": "9.1.4",
   "scripts": {
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
@@ -55,6 +55,7 @@
     "expo-font": "~13.0.4",
     "expo-haptics": "~14.0.1",
     "expo-image-picker": "~16.0.6",
+    "expo-intent-launcher": "~12.0.2",
     "expo-linear-gradient": "~14.0.2",
     "expo-linking": "~7.0.5",
     "expo-notifications": "~0.29.14",

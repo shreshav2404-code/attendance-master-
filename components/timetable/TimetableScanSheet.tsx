@@ -3,10 +3,12 @@ import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { Camera, FileText, ImageIcon, X } from "lucide-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
 import { Button, Switch, TextInput } from "react-native-paper";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { Overlay } from "@/components/shared/Overlay";
 import { triggerTapHaptic } from "@/lib/haptics";
 import {
   buildTimetableScanPlan,
@@ -552,7 +554,9 @@ export const TimetableScanSheet = ({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={close}>
+    <Overlay visible={visible} onClose={close}>
+      {/* Reanimated's entering animation, not a Moti transform (see Overlay.tsx). */}
+      <Animated.View entering={FadeInDown.duration(200)} style={{ flex: 1 }}>
       <SafeAreaView className="flex-1 bg-background">
         <View className="flex-row items-center justify-between px-5 pb-2 pt-3">
           <Text className="font-inter-bold text-xl text-white">
@@ -697,6 +701,7 @@ export const TimetableScanSheet = ({
           )}
         </ScrollView>
       </SafeAreaView>
-    </Modal>
+      </Animated.View>
+    </Overlay>
   );
 };

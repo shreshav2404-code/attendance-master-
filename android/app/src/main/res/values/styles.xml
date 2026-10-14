@@ -5,6 +5,11 @@
     <item name="android:editTextBackground">@drawable/rn_edit_text_material</item>
     <item name="colorPrimary">@color/colorPrimary</item>
     <item name="android:statusBarColor">#0a0f1e</item>
+    <!-- Android 15+ forces edge-to-edge on apps targeting API 35, and then adjustResize
+         no longer lifts the screen above the keyboard, so text boxes ended up hidden
+         (S24+, Android 17). Opting out keeps adjustResize working. Must also be on the
+         splash theme: Android reads it when the window is created. -->
+    <item name="android:windowOptOutEdgeToEdgeEnforcement" tools:targetApi="35">true</item>
   </style>
   <style name="ResetEditText" parent="@android:style/Widget.EditText">
     <item name="android:padding">0dp</item>
@@ -15,5 +20,6 @@
     <item name="windowSplashScreenBackground">@color/splashscreen_background</item>
     <item name="windowSplashScreenAnimatedIcon">@drawable/splashscreen_logo</item>
     <item name="postSplashScreenTheme">@style/AppTheme</item>
+    <item name="android:windowOptOutEdgeToEdgeEnforcement" tools:targetApi="35">true</item>
   </style>
 </resources>

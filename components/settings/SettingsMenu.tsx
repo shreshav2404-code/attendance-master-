@@ -9,15 +9,19 @@ import {
   Database,
   Info,
   RefreshCw,
+  ShieldCheck,
   Table2,
   UserRound,
   X,
   type LucideIcon,
 } from "lucide-react-native";
-import { MotiView } from "moti";
-import { Modal, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
+import { Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
+import Animated, { SlideInRight } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { Overlay } from "@/components/shared/Overlay";
+import { ProfileAvatar } from "@/components/shared/ProfileAvatar";
+import { useStudent } from "@/hooks/useStudent";
 import { triggerTapHaptic } from "@/lib/haptics";
 
 export type SettingsPageKey =
@@ -28,6 +32,7 @@ export type SettingsPageKey =
   | "exam-week"
   | "saturdays"
   | "notifications"
+  | "permissions"
   | "data"
   | "updates"
   | "help";
@@ -93,6 +98,13 @@ export const SETTINGS_MENU_ITEMS: SettingsMenuItem[] = [
     Icon: Bell,
   },
   {
+    key: "permissions",
+    label: "Permissions",
+    hint: "Notifications, camera and what they're for",
+    href: "/settings/permissions",
+    Icon: ShieldCheck,
+  },
+  {
     key: "data",
     label: "Data management",
     hint: "Backup, restore, PDF, clear data",
@@ -143,27 +155,22 @@ const openSettingsPage = (current: SettingsPageKey, item: SettingsMenuItem) => {
 
 export const SettingsMenu = ({ visible, current, onClose }: SettingsMenuProps) => {
   const insets = useSafeAreaInsets();
+  const { student } = useStudent();
   const { width } = useWindowDimensions();
   const panelWidth = Math.min(320, Math.round(width * 0.82));
 
   return (
-    <Modal
-      animationType="fade"
-      transparent
-      visible={visible}
-      statusBarTranslucent
-      onRequestClose={onClose}
-    >
+    <Overlay visible={visible} onClose={onClose}>
       <View className="flex-1 flex-row justify-end">
         <Pressable
           accessibilityLabel="Close menu"
           className="absolute inset-0 bg-black/60"
           onPress={onClose}
         />
-        <MotiView
-          from={{ translateX: panelWidth }}
-          animate={{ translateX: 0 }}
-          transition={{ type: "timing", duration: 220 }}
+        {/* Slides in with Reanimated's entering animation, not a Moti transform
+            (see components/shared/Overlay.tsx). */}
+        <Animated.View
+          entering={SlideInRight.duration(220)}
           className="h-full border-l border-white/10 bg-surface"
           style={{
             width: panelWidth,
@@ -172,7 +179,15 @@ export const SettingsMenu = ({ visible, current, onClose }: SettingsMenuProps) =
           }}
         >
           <View className="mb-3 flex-row items-center justify-between px-5">
-            <Text className="font-inter-bold text-xl text-white">Settings</Text>
+            <View className="mr-3 flex-1 flex-row items-center">
+              <ProfileAvatar name={student?.name ?? "?"} photoUri={student?.photoUri} size={40} />
+              <View className="ml-3 flex-1">
+                <Text className="font-inter-bold text-base text-white" numberOfLines={1}>
+                  {student?.name ?? "Settings"}
+                </Text>
+                <Text className="font-inter text-xs text-white/50">Settings</Text>
+              </View>
+            </View>
             <Pressable
               accessibilityLabel="Close menu"
               onPress={onClose}
@@ -228,8 +243,8 @@ export const SettingsMenu = ({ visible, current, onClose }: SettingsMenuProps) =
               );
             })}
           </ScrollView>
-        </MotiView>
+        </Animated.View>
       </View>
-    </Modal>
+    </Overlay>
   );
 };

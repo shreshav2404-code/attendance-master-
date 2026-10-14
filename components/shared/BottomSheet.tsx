@@ -1,6 +1,8 @@
 import { X } from "lucide-react-native";
-import { MotiView } from "moti";
-import { Modal, Pressable, Text, View, useWindowDimensions } from "react-native";
+import { KeyboardAvoidingView, Pressable, Text, View } from "react-native";
+import Animated, { SlideInDown } from "react-native-reanimated";
+
+import { Overlay } from "@/components/shared/Overlay";
 
 interface BottomSheetProps {
   visible: boolean;
@@ -15,26 +17,17 @@ export const BottomSheet = ({
   onClose,
   children,
 }: BottomSheetProps) => {
-  const { height } = useWindowDimensions();
-  const maxSheetHeight = Math.max(420, Math.floor(height * 0.88));
-
   return (
-    <Modal
-      animationType="fade"
-      transparent
-      visible={visible}
-      statusBarTranslucent
-      onRequestClose={onClose}
-    >
-      <View className="flex-1 justify-end">
+    <Overlay visible={visible} onClose={onClose}>
+      <KeyboardAvoidingView behavior="padding" className="flex-1 justify-end">
         <Pressable className="absolute inset-0 bg-black/60" onPress={onClose} />
-        <MotiView
-          from={{ translateY: 360, opacity: 0 }}
-          animate={{ translateY: 0, opacity: 1 }}
-          exit={{ translateY: 360, opacity: 0 }}
-          transition={{ type: "spring", damping: 18, stiffness: 180 }}
+        {/* Reanimated's entering animation, not a Moti transform (see Overlay.tsx). */}
+        <Animated.View
+          entering={SlideInDown.springify().damping(18).stiffness(180)}
           className="rounded-t-[32px] border-t border-white/10 bg-surface px-5 pb-10 pt-4"
-          style={{ maxHeight: maxSheetHeight, zIndex: 10, elevation: 10 }}
+          // A share of the space left above the keyboard, so the title and ✕ stay
+          // on screen while typing (a share of the whole screen pushed them off the top).
+          style={{ maxHeight: "88%", zIndex: 10, elevation: 10 }}
         >
           <View className="mb-4 flex-row items-center justify-between">
             <View className="h-1.5 w-12 rounded-full bg-white/15" />
@@ -46,6 +39,8 @@ export const BottomSheet = ({
               <View />
             )}
             <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Close"
               onPress={onClose}
               hitSlop={10}
               className="h-9 w-9 items-center justify-center rounded-full bg-white/5"
@@ -54,8 +49,8 @@ export const BottomSheet = ({
             </Pressable>
           </View>
           {children}
-        </MotiView>
-      </View>
-    </Modal>
+        </Animated.View>
+      </KeyboardAvoidingView>
+    </Overlay>
   );
 };
