@@ -1,7 +1,7 @@
 {
   "name": "attendx",
   "main": "expo-router/entry",
-  "version": "9.1.0",
+  "version": "9.1.1",
   "scripts": {
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",

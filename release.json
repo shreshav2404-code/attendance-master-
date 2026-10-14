@@ -1,9 +1,9 @@
 {
-    "latestVersion":  "9.1.0",
+    "latestVersion":  "9.1.1",
     "minimumVersion":  "8.0.10",
-    "apkUrl":  "https://attendx.centralindia.cloudapp.azure.com/AttendX-9.1.0.apk",
+    "apkUrl":  "https://attendx.centralindia.cloudapp.azure.com/AttendX-9.1.1.apk",
     "iosStoreUrl":  "",
-    "notes":  "AttendX 9.1.0 - New Settings menu, timetable from PDF or photo, new logo",
-    "publishedAt":  "2026-10-14T09:08:53+05:30",
-    "sha256":  "1b710cbf46fdc9f8faaa220100480f82e1063922be9cd5c3dea88d2af7e19a6e"
+    "notes":  "AttendX 9.1.1 - Restore from backup on the welcome screen, new logo on the welcome screen",
+    "publishedAt":  "2026-10-14T09:48:46+05:30",
+    "sha256":  "f1993b7f1fd7505105e3f87519ee7ec063e23faebb9b34b785f9d8e7750b03ac"
 }

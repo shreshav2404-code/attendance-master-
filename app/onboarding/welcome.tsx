@@ -1,21 +1,43 @@
 import { router } from "expo-router";
 import { ArrowRight } from "lucide-react-native";
-import { View, Text } from "react-native";
+import { useState } from "react";
+import { Image, View, Text } from "react-native";
 import { Button } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { GradientCard } from "@/components/shared/GradientCard";
+import { pickAndRestoreBackup } from "@/lib/backupRestore";
 import { APP_COPY } from "@/lib/constants";
 import { triggerTapHaptic } from "@/lib/haptics";
 
 export default function WelcomeScreen() {
+  const [restoring, setRestoring] = useState(false);
+  const [restoreError, setRestoreError] = useState("");
+
+  // Reinstall or new phone: bring everything back from a JSON backup. The root
+  // layout sees the restored onboarded flag and opens the dashboard.
+  const restore = async () => {
+    void triggerTapHaptic();
+    setRestoreError("");
+    setRestoring(true);
+    try {
+      await pickAndRestoreBackup();
+    } catch (error) {
+      setRestoreError(error instanceof Error ? error.message : "Couldn't read that backup file.");
+    } finally {
+      setRestoring(false);
+    }
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-background">
       <View className="flex-1 justify-between px-5 py-6">
         <View className="pt-6">
-          <View className="h-24 w-24 items-center justify-center rounded-[32px] border border-white/10 bg-white/5">
-            <Text className="font-inter-bold text-3xl text-white">AX</Text>
-          </View>
+          <Image
+            source={require("../../assets/images/icon.png")}
+            accessibilityLabel="AttendX logo"
+            style={{ width: 96, height: 96, borderRadius: 26 }}
+          />
           <Text className="mt-8 font-inter-bold text-4xl leading-[48px] text-white">
             AttendX
           </Text>
@@ -48,6 +70,20 @@ export default function WelcomeScreen() {
               Setup takes about 2 minutes.
             </Text>
           </View>
+          <Button
+            mode="outlined"
+            icon="backup-restore"
+            textColor="#f8fafc"
+            style={{ borderColor: "rgba(248,250,252,0.45)" }}
+            loading={restoring}
+            disabled={restoring}
+            onPress={() => void restore()}
+          >
+            Restore from backup
+          </Button>
+          {restoreError ? (
+            <Text className="font-inter text-xs leading-5 text-red-300">{restoreError}</Text>
+          ) : null}
         </GradientCard>
       </View>
     </SafeAreaView>

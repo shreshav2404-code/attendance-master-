@@ -1,4 +1,3 @@
-import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system";
 import { router } from "expo-router";
 import * as Sharing from "expo-sharing";
@@ -12,6 +11,7 @@ import { useODEvents } from "@/hooks/useODEvents";
 import { useStudent } from "@/hooks/useStudent";
 import { useSubjects } from "@/hooks/useSubjects";
 import { useToast } from "@/hooks/useToast";
+import { pickAndRestoreBackup } from "@/lib/backupRestore";
 import { confirmAction } from "@/lib/confirm";
 import {
   DEFAULT_EXAM_WEEK_SETTINGS,
@@ -23,7 +23,7 @@ import {
 import { triggerTapHaptic, triggerWarningHaptic } from "@/lib/haptics";
 import { generateAttendancePdf, shareAttendancePdf } from "@/lib/pdf";
 import { buildShareSummary, shareAttendanceSummary } from "@/lib/share";
-import { clearAllStorage, exportBackup, parseBackup, restoreBackup } from "@/lib/storage";
+import { clearAllStorage, exportBackup } from "@/lib/storage";
 import { getTodayKey } from "@/lib/utils";
 import { useAttendanceStore } from "@/store/attendanceStore";
 import { useODStore } from "@/store/odStore";
@@ -55,64 +55,16 @@ export default function DataSettingsScreen() {
 
   const importJsonRestore = async () => {
     await triggerTapHaptic();
-    const pickedDocument = await DocumentPicker.getDocumentAsync({
-      type: "application/json",
-      copyToCacheDirectory: true,
-    });
-
-    if (pickedDocument.canceled) {
-      return;
-    }
-
-    const pickedAsset = pickedDocument.assets[0];
-
-    if (!pickedAsset) {
-      return;
-    }
-
-    const fileContents = await FileSystem.readAsStringAsync(pickedAsset.uri);
-    let backup: ReturnType<typeof parseBackup>;
-
     try {
-      backup = parseBackup(fileContents);
+      if ((await pickAndRestoreBackup()) === "restored") {
+        await toast.success("Backup imported");
+      }
     } catch (error) {
       await toast.warn(
         error instanceof Error ? error.message : "Couldn't read that backup file.",
         2600,
       );
-      return;
     }
-
-    await restoreBackup(backup);
-
-    useStudentStore.setState((currentValue) => ({
-      ...currentValue,
-      student: backup.studentBundle.student,
-      hourSlots: backup.hourSlotBundle.hourSlots,
-      workingDays: backup.hourSlotBundle.workingDays,
-      workingDateOverrides:
-        backup.hourSlotBundle.workingDateOverrides ?? DEFAULT_WORKING_DATE_OVERRIDES,
-      notificationSettings: backup.studentBundle.notificationSettings,
-      examWeek: backup.studentBundle.examWeek,
-      lastSyncedAt: backup.studentBundle.lastSyncedAt,
-      officialSyncSnapshotBySubject:
-        backup.studentBundle.officialSyncSnapshotBySubject ?? {},
-      onboarded: backup.onboarded,
-    }));
-    useSubjectStore.setState((currentValue) => ({
-      ...currentValue,
-      subjects: backup.subjects,
-      timetable: backup.timetable,
-    }));
-    useAttendanceStore.setState((currentValue) => ({
-      ...currentValue,
-      dailyLogs: backup.dailyLogs,
-    }));
-    useODStore.setState((currentValue) => ({
-      ...currentValue,
-      odEvents: backup.odEvents,
-    }));
-    await toast.success("Backup imported");
   };
 
   const clearAllData = async () => {
