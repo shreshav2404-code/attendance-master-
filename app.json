@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "Attendex 9.0.1",
+    "name": "Attendex 9.1.0",
     "slug": "attendx",
-    "version": "9.0.1",
+    "version": "9.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "attendx",
@@ -18,11 +18,13 @@
       "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#0a0f1e"
+        "backgroundImage": "./assets/images/adaptive-icon-background.png",
+        "backgroundColor": "#0B1D45"
       },
       "permissions": [
         "RECEIVE_BOOT_COMPLETED",
-        "VIBRATE"
+        "VIBRATE",
+        "REQUEST_INSTALL_PACKAGES"
       ],
       "blockedPermissions": [
         "android.permission.SYSTEM_ALERT_WINDOW",
@@ -83,8 +85,8 @@
         "origin": false
       },
       "updates": {
-        "releaseManifestUrl": "https://jsonblob.com/api/jsonBlob/019d6935-fb93-7d94-bda3-513846520df6",
-        "androidApkUrl": "https://expo.dev/artifacts/eas/L73CE68dag2urboTvrjuuct-8WGagJkAOw116S_mzTM.apk",
+        "releaseManifestUrl": "https://attendx.centralindia.cloudapp.azure.com/release.json",
+        "androidApkUrl": "https://attendx.centralindia.cloudapp.azure.com/AttendX-latest.apk",
         "iosStoreUrl": ""
       },
       "eas": {

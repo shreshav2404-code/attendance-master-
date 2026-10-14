@@ -81,6 +81,16 @@ def enableProguardInReleaseBuilds = (findProperty('android.enableProguardInRelea
 def jscFlavor = 'org.webkit:android-jsc:+'
 def hasEasManagedSigning = System.getenv("EAS_BUILD_ANDROID_KEYSTORE_PATH") != null
 
+// Local release key (AttendX's own key, used for the APKs on the update server):
+// pass -PreleaseKeystoreProperties=<file> with storeFile, storePassword, keyAlias
+// and keyPassword. scripts/build-release.ps1 does this; the file lives outside the repo.
+def releaseKeystoreProperties = new Properties()
+def releaseKeystorePropertiesPath = findProperty('releaseKeystoreProperties')
+if (releaseKeystorePropertiesPath && file(releaseKeystorePropertiesPath).exists()) {
+    file(releaseKeystorePropertiesPath).withInputStream { releaseKeystoreProperties.load(it) }
+}
+def hasLocalReleaseKey = releaseKeystoreProperties.getProperty('storeFile') != null
+
 android {
     ndkVersion rootProject.ext.ndkVersion
 
@@ -92,8 +102,8 @@ android {
         applicationId 'com.attendx.mobile'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 9010
-        versionName "9.0.1"
+        versionCode 9100
+        versionName "9.1.0"
     }
     signingConfigs {
         debug {
@@ -108,6 +118,11 @@ android {
                 storePassword System.getenv("EAS_BUILD_ANDROID_KEYSTORE_PASSWORD")
                 keyAlias System.getenv("EAS_BUILD_ANDROID_KEY_ALIAS")
                 keyPassword System.getenv("EAS_BUILD_ANDROID_KEY_PASSWORD")
+            } else if (hasLocalReleaseKey) {
+                storeFile file(releaseKeystoreProperties.getProperty('storeFile'))
+                storePassword releaseKeystoreProperties.getProperty('storePassword')
+                keyAlias releaseKeystoreProperties.getProperty('keyAlias')
+                keyPassword releaseKeystoreProperties.getProperty('keyPassword')
             }
         }
     }
@@ -116,7 +131,7 @@ android {
             signingConfig signingConfigs.debug
         }
         release {
-            if (hasEasManagedSigning) {
+            if (hasEasManagedSigning || hasLocalReleaseKey) {
                 signingConfig signingConfigs.release
             } else {
                 signingConfig signingConfigs.debug
@@ -155,6 +170,16 @@ android {
             android.packagingOptions[prop] += it
         }
     }
+}
+
+// Timetable scanning reads Latin text only. @react-native-ml-kit/text-recognition
+// bundles four more OCR models (Chinese, Devanagari, Japanese, Korean); leave them
+// out of the APK. proguard-rules.pro tells R8 their classes are missing on purpose.
+configurations.all {
+    exclude group: "com.google.mlkit", module: "text-recognition-chinese"
+    exclude group: "com.google.mlkit", module: "text-recognition-devanagari"
+    exclude group: "com.google.mlkit", module: "text-recognition-japanese"
+    exclude group: "com.google.mlkit", module: "text-recognition-korean"
 }
 
 dependencies {

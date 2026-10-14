@@ -298,8 +298,8 @@ export default function SubjectsScreen() {
           >
             <Text className="font-inter-semibold text-xs leading-5 text-[#fde68a]">
               Attendance sync pending: subject import only creates/matches subjects.
-              Re-upload course-wise attendance in Settings and tap Compare and apply
-              to sync TH/AH/DL values.
+              Re-upload course-wise attendance in Settings ☰ › Official sync and tap
+              Compare and apply to sync TH/AH/DL values.
             </Text>
           </View>
         ) : null}

@@ -1,0 +1,7 @@
+{
+  "name": "pdf-pages",
+  "platforms": ["android"],
+  "android": {
+    "modulesClassNames": ["expo.modules.pdfpages.PdfPagesModule"]
+  }
+}

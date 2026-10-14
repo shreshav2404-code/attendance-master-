@@ -2,6 +2,10 @@ import { compareVersions, isTrustedUpdateUrl, resolveUpdateUrl } from "@/lib/app
 
 describe("appUpdate", () => {
   it("only trusts https download links on the release hosts", () => {
+    expect(
+      isTrustedUpdateUrl("https://attendx.centralindia.cloudapp.azure.com/AttendX-9.1.0.apk"),
+    ).toBe(true);
+    expect(isTrustedUpdateUrl("https://cloudapp.azure.com/app.apk")).toBe(false);
     expect(isTrustedUpdateUrl("https://expo.dev/artifacts/eas/abc.apk")).toBe(true);
     expect(isTrustedUpdateUrl("https://github.com/owner/repo/releases/download/v1/app.apk")).toBe(true);
     expect(isTrustedUpdateUrl("https://objects.githubusercontent.com/x/app.apk")).toBe(true);

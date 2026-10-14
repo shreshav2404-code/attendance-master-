@@ -8,7 +8,9 @@ device; the only network call is the update-manifest check in `lib/appUpdate.ts`
 
 - `app/` — Expo Router screens. `_layout.tsx` hydrates all stores, gates onboarding, runs notifications and the
   force-update check. Tabs: `index` (dashboard), `today` (mark today's classes), `od` (OD manager), `settings`
-  (1,300+ lines: profile, timetable share/QR, exam week, Saturday overrides, notifications, imports, backup, updates).
+  (the profile page). Every other settings page is its own route in `app/settings/` (od, sync, timetable,
+  exam-week, saturdays, notifications, data, updates) plus `help/`, all opened from the ☰ menu
+  (`components/settings/SettingsMenu.tsx`) and framed by `SettingsPage` (back arrow, ☰, coffee/UPI card, toast).
   `onboarding/` is welcome → student-info → subjects → schedule → timetable → complete.
 - `store/` — four Zustand stores (student, subject+timetable, attendance logs, OD events). Each action updates
   memory, then persists the whole array via `lib/storage.ts` (MMKV cache in front of AsyncStorage, 7 JSON keys).
@@ -18,7 +20,13 @@ device; the only network call is the update-manifest check in `lib/appUpdate.ts`
 - `lib/` imports: `officialReportImport.ts` (college Excel report via `xlsx`), `pendingODImport.ts`,
   `timetableShare.ts` (QR/code share: lz-string + zod-validated), `sync.ts`, `pdf.ts`, `share.ts`, `notifications.ts`,
   `appUpdate.ts` (release manifest on jsonblob.com).
-- Tests in `__tests__/` cover calculations, imports, sync, storage and timetable share (42 tests).
+- Timetable scan: `lib/timetableScan.ts` (pure) turns OCR output into a grid: day rows (or columns), class
+  columns from the header times, break/lunch columns, merged cells, course codes (aSc PDFs: `CSE1500`,
+  practical `CSE1500_P` → same subject), and batch-split cells (`B1`/`B2`, `Bat1`–`Bat4`). Device side in
+  `lib/timetableScanSource.ts`: ML Kit OCR (`@react-native-ml-kit/text-recognition`) and PDF pages rendered by
+  the local Expo module `modules/pdf-pages` (Android `PdfRenderer`). UI: `components/timetable/TimetableScanSheet.tsx`.
+  `__tests__/fixtures/asc-*.json` are real college timetable pages in ML Kit's shape.
+- Tests in `__tests__/` cover calculations, imports, sync, storage, timetable share and timetable scan.
 
 ## Commands
 
@@ -34,6 +42,10 @@ device; the only network call is the update-manifest check in `lib/appUpdate.ts`
   `android/app/build.gradle` (`versionName`), and `release.json` for the in-app updater (see README).
   EAS manages `versionCode` remotely (`appVersionSource: remote` + `autoIncrement`); the `versionCode` in
   `build.gradle` only applies to local builds.
+- Releases: `scripts/publish-release.ps1` builds (`scripts/build-release.ps1`, signed with the key described by
+  `D:\attendx-keys\keystore.properties`, passed as `-PreleaseKeystoreProperties`) and uploads the APK, then
+  `release.json`, to the VM (`azureuser@attendx.centralindia.cloudapp.azure.com:/srv/attendx`, SSH key
+  `~/.ssh/keshav.pem`). Bump `versionCode` every release. Never commit the key or its properties file.
 - Don't change `reactNativeArchitectures` in `android/gradle.properties`: EAS builds read it, so it would
   make published APKs arm64-only. Use the `-P` flag below for local builds instead.
 - Attendance log ids: an entry for one class period uses `getSlotLogId(date, slotId)` (Today screen and
@@ -50,7 +62,10 @@ device; the only network call is the update-manifest check in `lib/appUpdate.ts`
 - expo-notifications 0.29 needs an explicit trigger `type` (e.g. `SchedulableTriggerInputTypes.DAILY`); a
   typeless `{ hour, minute }` trigger fires immediately on Android. `runProactiveAlerts` is queued so
   overlapping calls can't send the same reminder twice.
-- Settings toasts: error paths call `warnFeedback()` (warning icon + haptic), successes `successFeedback()`.
+- Toasts: `useToast()` (`hooks/useToast.ts`); error paths call `toast.warn()` (warning icon + haptic), successes
+  `toast.success()`. Pass the controller to `SettingsPage`, which renders it.
+- ML Kit OCR: `android/app/build.gradle` excludes the Chinese/Devanagari/Japanese/Korean models the library bundles
+  (Latin only) and `proguard-rules.pro` has the matching `-dontwarn` lines. Adding a native module means a rebuild.
 - Destructive actions go through `confirmAction` (`lib/confirm.ts`); `Alert.alert` is a no-op on web.
 - Web build is preview-only: `TrendChart` shows a text fallback there (Skia needs CanvasKit on web).
 

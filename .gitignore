@@ -12,6 +12,8 @@ expo-env.d.ts
 # Native
 *.orig.*
 *.jks
+keystore.properties
+credentials.json
 *.p8
 *.p12
 *.key
@@ -45,3 +47,7 @@ apk_unzip/
 .idea/
 
 app-example
+
+# Build output of local Expo modules
+modules/*/android/build/
+modules/*/android/.cxx/

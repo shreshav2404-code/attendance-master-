@@ -62,10 +62,15 @@ export default function CompleteScreen() {
               await setOnboarded(true);
             }
             await triggerSuccessHaptic();
-            router.replace(isEditMode ? "/(tabs)/settings" : "/(tabs)");
+            if (isEditMode) {
+              // Edits start from Settings > Timetable; pop back to that page.
+              router.dismissTo("/settings/timetable");
+              return;
+            }
+            router.replace("/(tabs)");
           }}
         >
-          {isEditMode ? "Back to Settings" : "Go to Dashboard"}
+          {isEditMode ? "Back to Timetable settings" : "Go to Dashboard"}
         </Button>
       </View>
     </SafeAreaView>

@@ -130,9 +130,16 @@ const normalizeManifest = (value: unknown): ReleaseManifest => {
   };
 };
 
-// The release manifest is fetched from a public URL that anyone who knows it can
-// overwrite, so only follow download links to hosts the real releases use.
-const TRUSTED_UPDATE_HOSTS = ["expo.dev", "github.com", "githubusercontent.com", "apps.apple.com"];
+// Only follow download links to hosts the real releases use, so a tampered
+// manifest can't point the app at someone else's APK. Releases are served from
+// the AttendX VM (Caddy, /srv/attendx); the others are older release hosts.
+const TRUSTED_UPDATE_HOSTS = [
+  "attendx.centralindia.cloudapp.azure.com",
+  "expo.dev",
+  "github.com",
+  "githubusercontent.com",
+  "apps.apple.com",
+];
 
 export const isTrustedUpdateUrl = (url: string): boolean => {
   try {

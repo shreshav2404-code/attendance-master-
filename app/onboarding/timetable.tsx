@@ -5,6 +5,7 @@ import { Button } from "react-native-paper";
 
 import { ProgressBar } from "@/components/shared/ProgressBar";
 import { SubjectBadge } from "@/components/shared/SubjectBadge";
+import { TimetableScanSheet } from "@/components/timetable/TimetableScanSheet";
 import { triggerSuccessHaptic, triggerTapHaptic } from "@/lib/haptics";
 import { useStudent } from "@/hooks/useStudent";
 import { useSubjects } from "@/hooks/useSubjects";
@@ -13,8 +14,8 @@ import type { TimetableSlot, WorkingDay } from "@/types";
 
 export default function TimetableScreen() {
   const params = useLocalSearchParams<{ mode?: string | string[] }>();
-  const { hourSlots, workingDays } = useStudent();
-  const { subjects } = useSubjects();
+  const { hourSlots, workingDays, setHourSlots } = useStudent();
+  const { subjects, setSubjects } = useSubjects();
   const { timetable, setTimetable } = useTimetable();
   const mode = Array.isArray(params.mode) ? params.mode[0] : params.mode;
   const isEditMode = mode === "edit";
@@ -23,6 +24,7 @@ export default function TimetableScreen() {
     subjects[0]?.id ?? null,
   );
   const [draftTimetable, setDraftTimetable] = useState<TimetableSlot[]>(timetable);
+  const [scanVisible, setScanVisible] = useState(false);
 
   useEffect(() => {
     if (subjects.length === 0) {
@@ -130,6 +132,35 @@ export default function TimetableScreen() {
       <View className="mt-5">
         <ProgressBar progress={80} />
       </View>
+
+      <Button
+        mode="contained-tonal"
+        icon="table-arrow-down"
+        style={{ marginTop: 20 }}
+        onPress={() => {
+          void triggerTapHaptic();
+          setScanVisible(true);
+        }}
+      >
+        Fill from timetable PDF or photo
+      </Button>
+      <TimetableScanSheet
+        visible={scanVisible}
+        onClose={() => setScanVisible(false)}
+        subjects={subjects}
+        timetable={draftTimetable}
+        hourSlots={hourSlots}
+        workingDays={workingDays}
+        onApply={async (plan) => {
+          if (plan.createdSubjects.length > 0) {
+            await setSubjects([...subjects, ...plan.createdSubjects]);
+          }
+          await setHourSlots(plan.hourSlots, plan.workingDays);
+          // Saved with the rest of the grid when the student taps Review setup.
+          setDraftTimetable(plan.timetable);
+          await triggerSuccessHaptic();
+        }}
+      />
 
       <ScrollView
         horizontal

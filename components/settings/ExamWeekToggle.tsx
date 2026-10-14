@@ -1,4 +1,4 @@
-import { View } from "react-native";
+import { Text, View } from "react-native";
 import { Switch, TextInput } from "react-native-paper";
 
 import type { ExamWeekSettings } from "@/types";
@@ -10,7 +10,10 @@ interface ExamWeekToggleProps {
 
 export const ExamWeekToggle = ({ value, onChange }: ExamWeekToggleProps) => (
   <View className="rounded-[28px] border border-white/10 bg-white/5 p-4">
-    <View className="flex-row items-center justify-end">
+    <View className="flex-row items-center justify-between">
+      <Text className="font-inter-semibold text-base text-white">
+        Exam week mode
+      </Text>
       <Switch
         value={value.enabled}
         onValueChange={(enabled) => onChange({ ...value, enabled })}
@@ -18,14 +21,14 @@ export const ExamWeekToggle = ({ value, onChange }: ExamWeekToggleProps) => (
     </View>
     <TextInput
       mode="outlined"
-      label="Start date"
+      label="Start date (YYYY-MM-DD)"
       value={value.startDate ?? ""}
       onChangeText={(startDate) => onChange({ ...value, startDate })}
       className="mt-3 bg-transparent"
     />
     <TextInput
       mode="outlined"
-      label="End date"
+      label="End date (YYYY-MM-DD)"
       value={value.endDate ?? ""}
       onChangeText={(endDate) => onChange({ ...value, endDate })}
       className="mt-3 bg-transparent"

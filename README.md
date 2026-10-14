@@ -75,17 +75,25 @@ eas build --platform ios --profile production          # App Store build
 
 ## In-App APK Update Flow
 
-AttendX checks a public release manifest and compares versions in Settings.
+Releases are served from the AttendX VM (Azure, Caddy serving `/srv/attendx`) at
+`https://attendx.centralindia.cloudapp.azure.com`. The app reads `release.json` there
+(`extra.updates.releaseManifestUrl` in `app.json`) and only downloads APKs from hosts in
+`TRUSTED_UPDATE_HOSTS` (`lib/appUpdate.ts`).
 
-1. Update `release.json`:
-   - `latestVersion`
-   - `minimumVersion`
-   - `apkUrl` (new APK link)
-2. Publish it:
-```bash
-powershell -ExecutionPolicy Bypass -File .\scripts\publish-release-manifest.ps1
+1. Bump the version: `app.json` (`version` and `name`), `package.json`, and in
+   `android/app/build.gradle` `versionName` plus `versionCode` (must go up every release,
+   or Android refuses the update).
+2. Build and publish (signs with AttendX's own key, uploads over SSH, checks the server):
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\publish-release.ps1 -Notes "What changed"
 ```
-3. Users tap `Settings -> Check for updates -> Download latest APK`.
+3. Users tap `Settings ☰ › Updates & about › Check for updates › Download latest APK`.
+   First-time installs: `https://attendx.centralindia.cloudapp.azure.com/AttendX-latest.apk`.
+
+Signing: release APKs use the key in `D:\attendx-keys\attendx-release.jks`, described by
+`D:\attendx-keys\keystore.properties` (never commit either; keep backups — losing the key
+means users can't update). Builds without it fall back to the debug key, which can't
+update an installed release.
 
 Notes:
 - Android update installs are user-confirmed through package installer.
